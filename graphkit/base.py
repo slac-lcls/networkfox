@@ -1,6 +1,7 @@
 # Copyright 2016, Yahoo Inc.
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 
+
 class Data(object):
     """
     This wraps any data that is consumed or produced
@@ -18,6 +19,7 @@ class Data(object):
 
     def set_data(self, data):
         raise NotImplementedError
+
 
 class Operation(object):
     """
@@ -149,27 +151,11 @@ class NetworkOperation(Operation):
         self.net = kwargs.pop('net')
         Operation.__init__(self, **kwargs)
 
-        # set execution mode to single-threaded sequential by default
-        self._execution_method = "sequential"
-
     def _compute(self, named_inputs, outputs=None):
-        return self.net.compute(outputs, named_inputs, method=self._execution_method)
+        return self.net.compute(outputs, named_inputs)
 
     def __call__(self, *args, **kwargs):
         return self._compute(*args, **kwargs)
-
-    def set_execution_method(self, method):
-        """
-        Determine how the network will be executed.
-
-        Args:
-            method: str
-                If "parallel", execute graph operations concurrently
-                using a threadpool.
-        """
-        options = ['parallel', 'sequential']
-        assert method in options
-        self._execution_method = method
 
     def plot(self, filename=None, show=False):
         self.net.plot(filename=filename, show=show)

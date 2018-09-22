@@ -55,7 +55,6 @@ class Network(object):
         # graph in networkx
         self._necessary_steps_cache = {}
 
-
     def add_op(self, operation):
         """
         Adds the given operation and its data requirements to the network graph
@@ -84,11 +83,9 @@ class Network(object):
         # clear compiled steps (must recompile after adding new layers)
         self.steps = []
 
-
     def list_layers(self):
         assert self.steps, "network must be compiled before listing layers."
         return [(s.name, s) for s in self.steps if isinstance(s, Operation)]
-
 
     def show_layers(self):
         """Shows info (name, needs, and provides) about all layers in this network."""
@@ -97,7 +94,6 @@ class Network(object):
             print("\t", "needs: ", step.needs)
             print("\t", "provides: ", step.provides)
             print("")
-
 
     def compile(self):
         """Create a set of steps for evaluating layers
@@ -139,7 +135,6 @@ class Network(object):
 
             else:
                 raise TypeError("Unrecognized network graph node")
-
 
     def _find_necessary_steps(self, outputs, inputs):
         """
@@ -204,7 +199,6 @@ class Network(object):
             # Get rid of the unnecessary nodes from the set of necessary ones.
             necessary_nodes -= unnecessary_nodes
 
-
         necessary_steps = [step for step in self.steps if step in necessary_nodes]
 
         # save this result in a precomputed cache for future lookup
@@ -213,10 +207,10 @@ class Network(object):
         # Return an ordered list of the needed steps.
         return necessary_steps
 
-
-    def compute(self, outputs, named_inputs, method=None):
+    def compute(self, outputs, named_inputs):
         """
-        Run the graph. Any inputs to the network must be passed in by name.
+        This method runs the graph one operation at a time in a single thread
+        Any inputs to the network must be passed in by name.
 
         :param list output: The names of the data node you'd like to have returned
                             once all necessary computations are complete.
@@ -237,83 +231,6 @@ class Network(object):
         assert isinstance(outputs, (list, tuple)) or outputs is None,\
             "The outputs argument must be a list"
 
-
-        # choose a method of execution
-        if method == "parallel":
-            return self._compute_thread_pool_barrier_method(named_inputs,
-                                                            outputs)
-        else:
-            return self._compute_sequential_method(named_inputs,
-                                                   outputs)
-
-
-    def _compute_thread_pool_barrier_method(self, named_inputs, outputs,
-                                            thread_pool_size=10):
-        """
-        This method runs the graph using a parallel pool of thread executors.
-        You may achieve lower total latency if your graph is sufficiently
-        sub divided into operations using this method.
-        """
-        from multiprocessing.dummy import Pool
-
-        # if we have not already created a thread_pool, create one
-        if not hasattr(self, "_thread_pool"):
-            self._thread_pool = Pool(thread_pool_size)
-        pool = self._thread_pool
-
-        cache = {}
-        cache.update(named_inputs)
-        necessary_nodes = self._find_necessary_steps(outputs, named_inputs)
-
-        # this keeps track of all nodes that have already executed
-        has_executed = set()
-
-        # with each loop iteration, we determine a set of operations that can be
-        # scheduled, then schedule them onto a thread pool, then collect their
-        # results onto a memory cache for use upon the next iteration.
-        while True:
-
-            # the upnext list contains a list of operations for scheduling
-            # in the current round of scheduling
-            upnext = []
-            for node in necessary_nodes:
-                # only delete if all successors for the data node have been executed
-                if isinstance(node, DeleteInstruction):
-                    if ready_to_delete_data_node(node,
-                                                 has_executed,
-                                                 self.graph):
-                        if node in cache:
-                            cache.pop(node)
-
-                # continue if this node is anything but an operation node
-                if not isinstance(node, Operation):
-                    continue
-
-                if ready_to_schedule_operation(node, has_executed, self.graph) \
-                        and node not in has_executed:
-                    upnext.append(node)
-
-
-            # stop if no nodes left to schedule, exit out of the loop
-            if len(upnext) == 0:
-                break
-
-            done_iterator = pool.imap_unordered(
-                                lambda op: (op,op._compute(cache)),
-                                upnext)
-            for op, result in done_iterator:
-                cache.update(result)
-                has_executed.add(op)
-
-        if not outputs:
-            return cache
-        else:
-            return {k: cache[k] for k in iter(cache) if k in outputs}
-
-    def _compute_sequential_method(self, named_inputs, outputs):
-        """
-        This method runs the graph one operation at a time in a single thread
-        """
         # start with fresh data cache
         cache = {}
 
@@ -373,7 +290,6 @@ class Network(object):
             # Filter outputs to just return what's needed.
             # Note: list comprehensions exist in python 2.7+
             return {k: cache[k] for k in iter(cache) if k in outputs}
-
 
     def plot(self, filename=None, show=False):
         """
@@ -468,6 +384,7 @@ def ready_to_schedule_operation(op, has_executed, graph):
                               nx.ancestors(graph, op)))
     return dependencies.issubset(has_executed)
 
+
 def ready_to_delete_data_node(name, has_executed, graph):
     """
     Determines if a DataPlaceholderNode is ready to be deleted from the
@@ -485,6 +402,7 @@ def ready_to_delete_data_node(name, has_executed, graph):
     """
     data_node = get_data_node(name, graph)
     return set(graph.successors(data_node)).issubset(has_executed)
+
 
 def get_data_node(name, graph):
     """

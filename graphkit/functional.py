@@ -140,8 +140,6 @@ class operation(Operation):
              self.fn.__name__)
 
 
-
-
 class compose(object):
     """
     This is a simple class that's used to compose ``operation`` instances into

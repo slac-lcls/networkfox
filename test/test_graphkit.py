@@ -12,6 +12,7 @@ import graphkit.network as network
 import graphkit.modifiers as modifiers
 from graphkit import operation, compose, Operation
 
+
 def test_network():
 
     # Sum operation, late-bind compute function
@@ -225,98 +226,6 @@ def test_deleted_optional():
     results = net({'a': 4, 'b': 3}, outputs=['sum2'])
     assert 'sum2' in results
 
-
-
-def test_parallel_execution():
-    import time
-
-    def fn(x):
-        time.sleep(1)
-        print("fn %s" % (time.time() - t0))
-        return 1 + x
-
-    def fn2(a,b):
-        time.sleep(1)
-        print("fn2 %s" % (time.time() - t0))
-        return a+b
-
-    def fn3(z, k=1):
-        time.sleep(1)
-        print("fn3 %s" % (time.time() - t0))
-        return z + k
-
-    pipeline = compose(name="l", merge=True)(
-
-        # the following should execute in parallel under threaded execution mode
-        operation(name="a", needs="x", provides="ao")(fn),
-        operation(name="b", needs="x", provides="bo")(fn),
-
-        # this should execute after a and b have finished
-        operation(name="c", needs=["ao", "bo"], provides="co")(fn2),
-
-        operation(name="d",
-                  needs=["ao", modifiers.optional("k")],
-                  provides="do")(fn3),
-
-        operation(name="e", needs=["ao", "bo"], provides="eo")(fn2),
-        operation(name="f", needs="eo", provides="fo")(fn),
-        operation(name="g", needs="fo", provides="go")(fn)
-
-
-    )
-
-    t0 = time.time()
-    pipeline.set_execution_method("parallel")
-    result_threaded = pipeline({"x": 10}, ["co", "go", "do"])
-    print("threaded result")
-    print(result_threaded)
-
-    t0 = time.time()
-    pipeline.set_execution_method("sequential")
-    result_sequential = pipeline({"x": 10}, ["co", "go", "do"])
-    print("sequential result")
-    print(result_sequential)
-
-    # make sure results are the same using either method
-    assert result_sequential == result_threaded
-
-def test_multi_threading():
-    import time
-    import random
-    from multiprocessing.dummy import Pool
-
-    def op_a(a, b):
-        time.sleep(random.random()*.02)
-        return a+b
-
-    def op_b(c, b):
-        time.sleep(random.random()*.02)
-        return c+b
-
-    def op_c(a, b):
-        time.sleep(random.random()*.02)
-        return a*b
-
-    pipeline = compose(name="pipeline", merge=True)(
-        operation(name="op_a", needs=['a', 'b'], provides='c')(op_a),
-        operation(name="op_b", needs=['c', 'b'], provides='d')(op_b),
-        operation(name="op_c", needs=['a', 'b'], provides='e')(op_c),
-    )
-
-    def infer(i):
-        # data = open("616039-bradpitt.jpg").read()
-        outputs = ["c", "d", "e"]
-        results = pipeline({"a": 1, "b":2}, outputs)
-        assert tuple(sorted(results.keys())) == tuple(sorted(outputs)), (outputs, results)
-        return results
-
-    N = 100
-    for i in range(20, 200):
-        pool = Pool(i)
-        pool.map(infer, range(N))
-        pool.close()
-
-
 ####################################
 # Backwards compatibility
 ####################################
@@ -352,6 +261,7 @@ class Pow(Operation):
             p = math.pow(a, y)
             outputs.append(p)
         return outputs
+
 
 def test_backwards_compatibility():
 
