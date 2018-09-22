@@ -138,7 +138,7 @@ class Network(object):
 
     def _find_necessary_steps(self, outputs, inputs):
         """
-        Determines what graph steps need to pe run to get to the requested
+        Determines what graph steps need to be run to get to the requested
         outputs from the provided inputs.  Eliminates steps that come before
         (in topological order) any inputs that have been provided.  Also
         eliminates steps that are not on a path from the provided inputs to
@@ -221,7 +221,6 @@ class Network(object):
                                   represent the data nodes you want to populate,
                                   and the values are the concrete values you
                                   want to set for the data node.
-
 
         :returns: a dictionary of output data objects, keyed by name.
         """
@@ -339,7 +338,7 @@ class Network(object):
         # save plot
         if filename:
             basename, ext = os.path.splitext(filename)
-            with open(filename, "w") as fh:
+            with open(filename, "wb") as fh:
                 if ext.lower() == ".png":
                     fh.write(g.create_png())
                 elif ext.lower() == ".dot":
@@ -362,53 +361,3 @@ class Network(object):
             plt.show()
 
         return g
-
-
-def ready_to_schedule_operation(op, has_executed, graph):
-    """
-    Determines if a Operation is ready to be scheduled for execution based on
-    what has already been executed.
-
-    Args:
-        op:
-            The Operation object to check
-        has_executed: set
-            A set containing all operations that have been executed so far
-        graph:
-            The networkx graph containing the operations and data nodes
-    Returns:
-        A boolean indicating whether the operation may be scheduled for
-        execution based on what has already been executed.
-    """
-    dependencies = set(filter(lambda v: isinstance(v, Operation),
-                              nx.ancestors(graph, op)))
-    return dependencies.issubset(has_executed)
-
-
-def ready_to_delete_data_node(name, has_executed, graph):
-    """
-    Determines if a DataPlaceholderNode is ready to be deleted from the
-    cache.
-
-    Args:
-        name:
-            The name of the data node to check
-        has_executed: set
-            A set containing all operations that have been executed so far
-        graph:
-            The networkx graph containing the operations and data nodes
-    Returns:
-        A boolean indicating whether the data node can be deleted or not.
-    """
-    data_node = get_data_node(name, graph)
-    return set(graph.successors(data_node)).issubset(has_executed)
-
-
-def get_data_node(name, graph):
-    """
-    Gets a data node from a graph using its name
-    """
-    for node in graph.nodes():
-        if node == name and isinstance(node, DataPlaceholderNode):
-            return node
-    return None
