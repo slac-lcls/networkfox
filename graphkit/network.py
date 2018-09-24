@@ -76,6 +76,9 @@ class Network(object):
         for n in operation.needs:
             self.graph.add_edge(DataPlaceholderNode(n), operation)
 
+            if operation.color:
+                self.graph.nodes[operation]['color'] = operation.color
+
         # add nodes and edges to graph describing what this layer provides
         for p in operation.provides:
             self.graph.add_edge(operation, DataPlaceholderNode(p))
@@ -93,6 +96,7 @@ class Network(object):
             print("layer_name: ", name)
             print("\t", "needs: ", step.needs)
             print("\t", "provides: ", step.provides)
+            print("\t", "color: ", step.color)
             print("")
 
     def compile(self):
@@ -136,7 +140,7 @@ class Network(object):
             else:
                 raise TypeError("Unrecognized network graph node")
 
-    def _find_necessary_steps(self, outputs, inputs):
+    def _find_necessary_steps(self, outputs, inputs, color=None):
         """
         Determines what graph steps need to be run to get to the requested
         outputs from the provided inputs.  Eliminates steps that come before
@@ -152,6 +156,9 @@ class Network(object):
         :param dict inputs:
             A dictionary mapping names to values for all provided inputs.
 
+        :param str color:
+            A color to filter nodes by.
+
         :returns:
             Returns a list of all the steps that need to be run for the
             provided inputs and requested outputs.
@@ -160,7 +167,7 @@ class Network(object):
         # return steps if it has already been computed before for this set of inputs and outputs
         outputs = tuple(sorted(outputs)) if isinstance(outputs, (list, set)) else outputs
         inputs_keys = tuple(sorted(inputs.keys()))
-        cache_key = (inputs_keys, outputs)
+        cache_key = (inputs_keys, outputs, color)
         if cache_key in self._necessary_steps_cache:
             return self._necessary_steps_cache[cache_key]
 
@@ -199,7 +206,15 @@ class Network(object):
             # Get rid of the unnecessary nodes from the set of necessary ones.
             necessary_nodes -= unnecessary_nodes
 
-        necessary_steps = [step for step in self.steps if step in necessary_nodes]
+        necessary_steps = []
+
+        for step in self.steps:
+            if isinstance(step, Operation):
+                if step.color == color and step in necessary_nodes:
+                    necessary_steps.append(step)
+            else:
+                if step in necessary_nodes:
+                    necessary_steps.append(step)
 
         # save this result in a precomputed cache for future lookup
         self._necessary_steps_cache[cache_key] = necessary_steps
@@ -207,7 +222,7 @@ class Network(object):
         # Return an ordered list of the needed steps.
         return necessary_steps
 
-    def compute(self, outputs, named_inputs):
+    def compute(self, outputs, named_inputs, color=None):
         """
         This method runs the graph one operation at a time in a single thread
         Any inputs to the network must be passed in by name.
@@ -221,6 +236,8 @@ class Network(object):
                                   represent the data nodes you want to populate,
                                   and the values are the concrete values you
                                   want to set for the data node.
+
+        :param str color: Only the subgraph of nodes with color will be evaluted.
 
         :returns: a dictionary of output data objects, keyed by name.
         """
@@ -238,7 +255,7 @@ class Network(object):
 
         # Find the subset of steps we need to run to get to the requested
         # outputs from the provided inputs.
-        all_steps = self._find_necessary_steps(outputs, named_inputs)
+        all_steps = self._find_necessary_steps(outputs, named_inputs, color)
 
         self.times = {}
         for step in all_steps:
@@ -281,9 +298,9 @@ class Network(object):
                 raise TypeError("Unrecognized instruction.")
 
         if not outputs:
-            # Return the whole cache as output, including input and
-            # intermediate data nodes.
-            return cache
+            # Return cache as output including intermediate data nodes,
+            # but excluding input.
+            return {k: cache[k] for k in set(cache) - set(named_inputs)}
 
         else:
             # Filter outputs to just return what's needed.

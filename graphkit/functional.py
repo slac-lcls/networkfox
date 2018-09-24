@@ -67,6 +67,9 @@ class operation(Operation):
         A dict of key/value pairs representing constant parameters
         associated with your operation.  These can correspond to either
         ``args`` or ``kwargs`` of ``fn`.
+
+    :param str color:
+        A color for the node in the computation graph.
     """
 
     def __init__(self, fn=None, **kwargs):
@@ -92,6 +95,9 @@ class operation(Operation):
 
         if type(kwargs['params']) is not dict:
             kwargs['params'] = {}
+
+        if 'color' in kwargs and type(kwargs['color']) == str:
+            assert kwargs['color'], "empty string provided for `color` parameters"
 
         return kwargs
 
