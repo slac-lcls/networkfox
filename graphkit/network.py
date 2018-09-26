@@ -7,7 +7,7 @@ import networkx as nx
 
 from io import StringIO
 
-from .base import Operation
+from .base import Operation, Control
 
 
 class DataPlaceholderNode(str):
@@ -83,6 +83,10 @@ class Network(object):
         for p in operation.provides:
             self.graph.add_edge(operation, DataPlaceholderNode(p))
 
+        if isinstance(operation, Control) and hasattr(operation, 'condition_needs'):
+            for n in operation.condition_needs:
+                self.graph.add_edge(DataPlaceholderNode(n), operation)
+
         # clear compiled steps (must recompile after adding new layers)
         self.steps = []
 
@@ -97,6 +101,8 @@ class Network(object):
             print("\t", "needs: ", step.needs)
             print("\t", "provides: ", step.provides)
             print("\t", "color: ", step.color)
+            if hasattr(step, 'condition_needs'):
+                print("\t", "condition needs: ", step.condition_needs)
             print("")
 
     def compile(self):
@@ -107,13 +113,36 @@ class Network(object):
         self.steps = []
 
         # create an execution order such that each layer's needs are provided.
-        ordered_nodes = list(nx.dag.topological_sort(self.graph))
+        try:
+            def key(node):
+
+                if hasattr(node, 'order'):
+                    return node.order
+                elif isinstance(node, DataPlaceholderNode):
+                    return float('-inf')
+                else:
+                    return 0
+
+            ordered_nodes = list(nx.dag.lexicographical_topological_sort(self.graph,
+                                                                         key=key))
+        except TypeError as e:
+            if self._debug:
+                print("Lexicographical topological sort failed! Falling back to topological sort.")
+
+            if not any(map(lambda node: isinstance(node, Control), self.graph.nodes)):
+                ordered_nodes = list(nx.dag.topological_sort(self.graph))
+            else:
+                print("Topological sort failed!")
+                raise e
 
         # add Operations evaluation steps, and instructions to free data.
         for i, node in enumerate(ordered_nodes):
 
             if isinstance(node, DataPlaceholderNode):
                 continue
+
+            elif isinstance(node, Control):
+                self.steps.append(node)
 
             elif isinstance(node, Operation):
 
@@ -256,11 +285,24 @@ class Network(object):
         # Find the subset of steps we need to run to get to the requested
         # outputs from the provided inputs.
         all_steps = self._find_necessary_steps(outputs, named_inputs, color)
-
+        # import pdb
         self.times = {}
+        if_true = False
         for step in all_steps:
 
-            if isinstance(step, Operation):
+            if isinstance(step, Control):
+                # pdb.set_trace()
+                if hasattr(step, 'condition'):
+                    if_true = step._compute_condition(cache)
+                    if if_true:
+                        layer_outputs = step._compute(cache)
+                        cache.update(layer_outputs)
+                elif not if_true:
+                    layer_outputs = step._compute(cache)
+                    cache.update(layer_outputs)
+                    if_true = False
+
+            elif isinstance(step, Operation):
 
                 if self._debug:
                     print("-"*32)

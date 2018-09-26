@@ -9,3 +9,4 @@ from .functional import operation, compose
 # For backwards compatibility
 from .base import Operation
 from .network import Network
+from .control import If, ElseIf, Else

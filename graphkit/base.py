@@ -54,6 +54,7 @@ class Operation(object):
         self.provides = kwargs.get('provides')
         self.params = kwargs.get('params', {})
         self.color = kwargs.get('color', None)
+        self.order = 0
 
         # call _after_init as final step of initialization
         self._after_init()
@@ -165,3 +166,23 @@ class NetworkOperation(Operation):
         state = Operation.__getstate__(self)
         state['net'] = self.__dict__['net']
         return state
+
+
+class Control(Operation):
+
+    def __init__(self, **kwargs):
+        super(Control, self).__init__(**kwargs)
+
+    def __repr__(self):
+        """
+        Display more informative names for the Operation class
+        """
+        if hasattr(self, 'condition_needs'):
+            return u"%s(name='%s', needs=%s, provides=%s, condition_needs=%s)" % \
+                (self.__class__.__name__,
+                 self.name,
+                 self.needs,
+                 self.provides,
+                 self.condition_needs)
+        else:
+            return super(Control, self).__repr__()
