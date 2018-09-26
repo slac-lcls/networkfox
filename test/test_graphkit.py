@@ -5,12 +5,12 @@ import math
 import pickle
 
 from pprint import pprint
-from operator import add
+from operator import add, mul
 from numpy.testing import assert_raises
 
 import graphkit.network as network
 import graphkit.modifiers as modifiers
-from graphkit import operation, compose, Operation
+from graphkit import operation, compose, Operation, If, ElseIf, Else
 
 
 def test_network():
@@ -225,6 +225,39 @@ def test_deleted_optional():
     # DeleteInstructions are used only when a subset of outputs are requested.
     results = net({'a': 4, 'b': 3}, outputs=['sum2'])
     assert 'sum2' in results
+
+
+def test_control():
+
+    # create graph with control flow (if, elseif, else)
+    graph = compose(name='graph')(
+        operation(name="mul1", needs=['a', 'b'], provides=['ab'])(mul),
+        If(name='if_less_than_2', needs=['ab'], provides=['d'], condition_needs=['i'], condition=lambda i: i < 2)(
+            operation(name='add', needs=['ab'], provides=['c'])(lambda ab: ab + 2),
+            operation(name='sub2', needs=['c'], provides=['d'])(lambda c: c - 2)
+        ),
+        ElseIf(name='elseif', needs=['ab'], provides=['d'], condition_needs=['ab'], condition=lambda ab: ab > 2)(
+            operation(name='add', needs=['ab'], provides=['d'])(lambda ab: ab*10)
+        ),
+        Else(name='else_less_than_2', needs=['ab'], provides=['d'])(
+            operation(name='sub', needs=['ab'], provides=['c'])(lambda ab: ab - 1),
+            operation(name='add2', needs=['c'], provides=['d'])(lambda c: c + 1)
+        ),
+        operation(name='div', needs=['d'], provides=['e'])(lambda d: d/2)
+    )
+
+    # check if branch
+    results = graph({'a': 1, 'b': 3, 'i': 1})
+    assert results == {'ab': 3, 'c': 5, 'd': 3, 'e': 1.5}
+
+    # check else if branch
+    results = graph({'a': 1, 'b': 3, 'i': 3})
+    assert results == {'ab': 3, 'd': 30, 'e': 15.0}
+
+    # check else branch
+    results = graph({'a': 1, 'b': 1, 'i': 3})
+    assert results == {'ab': 1, 'c': 0, 'd': 1, 'e': 0.5}
+
 
 ####################################
 # Backwards compatibility
