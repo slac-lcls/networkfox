@@ -39,6 +39,7 @@ class FunctionalOperation(Operation):
     def __getstate__(self):
         state = Operation.__getstate__(self)
         state['fn'] = self.__dict__['fn']
+        state['color'] = self.__dict__['color']
         return state
 
 

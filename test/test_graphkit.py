@@ -182,7 +182,7 @@ def test_pruning_raises_for_bad_output():
     # Request two outputs we can compute and one we can't compute.  Assert
     # that this raises a ValueError.
     assert_raises(ValueError, net, {'a': 1, 'b': 2, 'c': 3, 'd': 4},
-        outputs=['sum1', 'sum3', 'sum4'])
+                  outputs=['sum1', 'sum3', 'sum4'])
 
 
 def test_optional():
@@ -259,11 +259,25 @@ def test_control():
     assert results == {'ab': 1, 'c': 0, 'd': 1, 'e': 0.5}
 
 
+def test_color():
+    graph = compose(name='graph')(
+        operation(name='sum', needs=['a', 'b'], provides=['apb'], color='red')(add),
+        operation(name='mul', needs=['a', 'b'], provides=['ab'], color='blue')(mul)
+    )
+
+    res = graph({'a': 2, 'b': 3}, color='red')
+    assert res == {'apb': 5}
+
+    res = graph({'a': 2, 'b': 3}, color='blue')
+    assert res == {'ab': 6}
+
+
 ####################################
 # Backwards compatibility
 ####################################
 
 # Classes must be defined as members of __main__ for pickleability
+
 
 # We first define some basic operations
 class Sum(Operation):

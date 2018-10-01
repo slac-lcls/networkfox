@@ -285,13 +285,12 @@ class Network(object):
         # Find the subset of steps we need to run to get to the requested
         # outputs from the provided inputs.
         all_steps = self._find_necessary_steps(outputs, named_inputs, color)
-        # import pdb
+
         self.times = {}
         if_true = False
         for step in all_steps:
 
             if isinstance(step, Control):
-                # pdb.set_trace()
                 if hasattr(step, 'condition'):
                     if_true = step._compute_condition(cache)
                     if if_true:
