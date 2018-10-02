@@ -1,24 +1,7 @@
 # Copyright 2016, Yahoo Inc.
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 
-
-class Data(object):
-    """
-    This wraps any data that is consumed or produced
-    by a Operation. This data should also know how to serialize
-    itself appropriately.
-
-    This class an "abstract" class that should be extended by
-    any class working with data in the HiC framework.
-    """
-    def __init__(self, **kwargs):
-        pass
-
-    def get_data(self):
-        raise NotImplementedError
-
-    def set_data(self, data):
-        raise NotImplementedError
+from collections import namedtuple
 
 
 class Operation(object):
@@ -171,6 +154,14 @@ class NetworkOperation(Operation):
 class Control(Operation):
 
     def __init__(self, **kwargs):
+        if not all(isinstance(arg, Var) for arg in kwargs['needs']):
+            needs = [Var(arg) for arg in kwargs['needs']]
+            kwargs['needs'] = needs
+
+        if not all(isinstance(arg, Var) for arg in kwargs['provides']):
+            provides = [Var(arg) for arg in kwargs['provides']]
+            kwargs['provides'] = provides
+
         super(Control, self).__init__(**kwargs)
 
     def __repr__(self):
@@ -186,3 +177,11 @@ class Control(Operation):
                  self.condition_needs)
         else:
             return super(Control, self).__repr__()
+
+
+class Var(object):
+
+    def __init__(self, name, typ=object, optional=False):
+        self.name = name
+        self.type = typ
+        self.optional = optional

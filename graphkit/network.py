@@ -74,14 +74,16 @@ class Network(object):
 
         # add nodes and edges to graph describing the data needs for this layer
         for n in operation.needs:
-            self.graph.add_edge(DataPlaceholderNode(n), operation)
+            self.graph.add_edge(DataPlaceholderNode(n.name), operation)
+            self.graph.nodes[n.name]['type'] = n.type
 
             if operation.color:
                 self.graph.nodes[operation]['color'] = operation.color
 
         # add nodes and edges to graph describing what this layer provides
         for p in operation.provides:
-            self.graph.add_edge(operation, DataPlaceholderNode(p))
+            self.graph.add_edge(operation, DataPlaceholderNode(p.name))
+            self.graph.nodes[p.name]['type'] = p.type
 
         if isinstance(operation, Control) and hasattr(operation, 'condition_needs'):
             for n in operation.condition_needs:
@@ -111,7 +113,8 @@ class Network(object):
 
         # clear compiled steps
         self.steps = []
-
+        import pdb
+        pdb.set_trace()
         # create an execution order such that each layer's needs are provided.
         try:
             def key(node):
@@ -153,12 +156,14 @@ class Network(object):
                 # predecessor may be deleted if it is a data placeholder that
                 # is no longer needed by future Operations.
                 for predecessor in self.graph.predecessors(node):
+                    typ = self.graph.nodes[predecessor]
+
                     if self._debug:
                         print("checking if node %s can be deleted" % predecessor)
                     predecessor_still_needed = False
                     for future_node in ordered_nodes[i+1:]:
                         if isinstance(future_node, Operation):
-                            if predecessor in future_node.needs:
+                            if predecessor in map(lambda arg: arg.name, future_node.needs):
                                 predecessor_still_needed = True
                                 break
                     if not predecessor_still_needed:
@@ -196,7 +201,7 @@ class Network(object):
         # return steps if it has already been computed before for this set of inputs and outputs
         outputs = tuple(sorted(outputs)) if isinstance(outputs, (list, set)) else outputs
         inputs_keys = tuple(sorted(inputs.keys()))
-        cache_key = (inputs_keys, outputs, color)
+        cache_key = (*inputs_keys, outputs, color)
         if cache_key in self._necessary_steps_cache:
             return self._necessary_steps_cache[cache_key]
 

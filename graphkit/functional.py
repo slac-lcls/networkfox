@@ -3,7 +3,7 @@
 
 from itertools import chain
 
-from .base import Operation, NetworkOperation
+from .base import Operation, NetworkOperation, Var
 from .network import Network
 from .modifiers import optional
 
@@ -14,11 +14,12 @@ class FunctionalOperation(Operation):
         Operation.__init__(self, **kwargs)
 
     def _compute(self, named_inputs, outputs=None):
-        inputs = [named_inputs[d] for d in self.needs if not isinstance(d, optional)]
+
+        inputs = [named_inputs[d.name] for d in self.needs if not d.optional]
 
         # Find any optional inputs in named_inputs.  Get only the ones that
         # are present there, no extra `None`s.
-        optionals = {n: named_inputs[n] for n in self.needs if isinstance(n, optional) and n in named_inputs}
+        optionals = {n.name: named_inputs[n.name] for n in self.needs if n.optional and n.name in named_inputs}
 
         # Combine params and optionals into one big glob of keyword arguments.
         kwargs = {k: v for d in (self.params, optionals) for k, v in d.items()}
@@ -26,7 +27,7 @@ class FunctionalOperation(Operation):
         if len(self.provides) == 1:
             result = [result]
 
-        result = zip(self.provides, result)
+        result = zip(map(lambda arg: arg.name, self.provides), result)
         if outputs:
             outputs = set(outputs)
             result = filter(lambda x: x[0] in outputs, result)
@@ -82,12 +83,29 @@ class operation(Operation):
         # Allow single value for needs parameter
         if 'needs' in kwargs and type(kwargs['needs']) == str:
             assert kwargs['needs'], "empty string provided for `needs` parameters"
-            kwargs['needs'] = [kwargs['needs']]
+            kwargs['needs'] = [Var(kwargs['needs'])]
+
+        if not all(isinstance(arg, Var) for arg in kwargs['needs']):
+            needs = []
+
+            for arg in kwargs['needs']:
+                var = Var(arg)
+
+                if isinstance(arg, optional):
+                    var.optional = True
+
+                needs.append(var)
+
+            kwargs['needs'] = needs
 
         # Allow single value for provides parameter
         if 'provides' in kwargs and type(kwargs['provides']) == str:
             assert kwargs['provides'], "empty string provided for `needs` parameters"
-            kwargs['provides'] = [kwargs['provides']]
+            kwargs['provides'] = [Var(kwargs['provides'])]
+
+        if not all(isinstance(arg, Var) for arg in kwargs['provides']):
+            provides = [Var(arg) for arg in kwargs['provides']]
+            kwargs['provides'] = provides
 
         assert kwargs['name'], "operation needs a name"
         assert type(kwargs['needs']) == list, "no `needs` parameter provided"
