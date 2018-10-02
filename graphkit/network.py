@@ -113,8 +113,8 @@ class Network(object):
 
         # clear compiled steps
         self.steps = []
-        import pdb
-        pdb.set_trace()
+
+
         # create an execution order such that each layer's needs are provided.
         try:
             def key(node):

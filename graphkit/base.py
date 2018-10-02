@@ -185,3 +185,17 @@ class Var(object):
         self.name = name
         self.type = typ
         self.optional = optional
+
+    def __repr__(self):
+        return 'Var(name=%s, type=%s, optional=%s)' % (self.name, self.type, self.optional)
+
+    def __eq__(self, other):
+        """
+        Operation equality is based on name of layer.
+        (__eq__ and __hash__ must be overridden together)
+        """
+        return bool(self.name is not None and
+                    self.name == getattr(other, 'name', None))
+
+    def __hash__(self):
+        return hash(self.name)
