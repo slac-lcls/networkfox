@@ -4,11 +4,11 @@
 import math
 
 from pprint import pprint
-from operator import add, mul
+from operator import add, sub, mul
 from numpy.testing import assert_raises
 
 import graphkit.modifiers as modifiers
-from graphkit import operation, compose, If, ElseIf, Else
+from graphkit import operation, compose, If, ElseIf, Else, Var
 
 
 def test_network():
@@ -268,3 +268,28 @@ def test_color():
 
     res = graph({'a': 2, 'b': 3}, color='blue')
     assert res == {'ab': 6}
+
+
+def test_type_checking():
+
+    def abspow(a, p=3):
+        c = abs(a) ** p
+        return c
+
+    try:
+        graph = compose(name="graph")(
+           operation(name="mul1", needs=[Var("a", int), Var("b", int)], provides=[Var("ab", int)])(mul),
+           operation(name="sub1", needs=[Var("a", float), Var("ab", float)], provides=[Var("a_minus_ab", float)])(sub),
+           operation(name="abspow1", needs=[Var("a_minus_ab", float)], provides=[Var("abs_a_minus_ab_cubed", float)], params={"p": 3})(abspow)
+        )
+    except TypeError as e:
+        pass
+
+    graph = compose(name="graph")(
+        operation(name="mul1", needs=[Var("a", int), Var("b", int)], provides=[Var("ab", int)])(mul),
+        operation(name="sub1", needs=[Var("a", int), Var("ab", int)], provides=[Var("a_minus_ab", int)])(sub),
+        operation(name="abspow1", needs=[Var("a_minus_ab", int), Var("p", int, optional=True)], provides=[Var("abs_a_minus_ab_cubed", int)])(abspow)
+    )
+
+    out = graph({'a': 2, 'b': 5})
+    assert out == {'abs_a_minus_ab_cubed': 512, 'a_minus_ab': -8, 'ab': 10}

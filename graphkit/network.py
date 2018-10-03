@@ -75,8 +75,12 @@ class Network(object):
         # add nodes and edges to graph describing the data needs for this layer
         for n in operation.needs:
             self.graph.add_edge(DataPlaceholderNode(n.name), operation)
+
             if 'type' not in self.graph.nodes[n.name]:
                 self.graph.nodes[n.name]['type'] = n.type
+            elif self.graph.nodes[n.name]['type'] != n.type:
+                raise TypeError("Duplicate nodes with different types. Needs: %s Expected: %s Got: %s" %
+                                (n.name, self.graph.nodes[n.name]['type'], n.type))
 
             if operation.color:
                 self.graph.nodes[operation]['color'] = operation.color
@@ -84,8 +88,12 @@ class Network(object):
         # add nodes and edges to graph describing what this layer provides
         for p in operation.provides:
             self.graph.add_edge(operation, DataPlaceholderNode(p.name))
+
             if 'type' not in self.graph.nodes[p.name]:
                 self.graph.nodes[p.name]['type'] = p.type
+            elif self.graph.nodes[p.name]['type'] != p.type:
+                raise TypeError("Duplicate nodes with different types. Provides: %s Expected: %s Got: %s" %
+                                (p.name, self.graph.nodes[p.name]['type'], p.type))
 
         if isinstance(operation, Control) and hasattr(operation, 'condition_needs'):
             for n in operation.condition_needs:
@@ -157,13 +165,6 @@ class Network(object):
                 # predecessor may be deleted if it is a data placeholder that
                 # is no longer needed by future Operations.
                 for predecessor in self.graph.predecessors(node):
-                    var = Var(predecessor, self.graph.nodes[predecessor]['type'])
-
-                    if var not in node.needs:
-                        for need in node.needs:
-                            if need.name == var.name:
-                                break
-                        raise TypeError("Type mismatch. Expected: %s Got: %s" % (need, var))
 
                     if self._debug:
                         print("checking if node %s can be deleted" % predecessor)
@@ -301,6 +302,7 @@ class Network(object):
 
         self.times = {}
         if_true = False
+
         for step in all_steps:
 
             if isinstance(step, Control):
@@ -325,6 +327,11 @@ class Network(object):
 
                 # compute layer outputs
                 layer_outputs = step._compute(cache)
+
+                for output in step.provides:
+                    if not isinstance(layer_outputs[output.name], output.type):
+                        raise TypeError("Type mismatch. Operation: %s Output: %s Expected: %s Got: %s" %
+                                        (step.name, output.name, output.type, type(layer_outputs[output.name])))
 
                 # add outputs to cache
                 cache.update(layer_outputs)

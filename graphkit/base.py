@@ -178,6 +178,9 @@ class Control(Operation):
 
 
 class Var(object):
+    """
+    Class for specifying optional types for inputs and outputs of graph nodes.
+    """
 
     def __init__(self, name, type=object, optional=False):
         self.name = name
