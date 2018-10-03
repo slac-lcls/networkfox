@@ -1,8 +1,6 @@
 # Copyright 2016, Yahoo Inc.
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 
-from collections import namedtuple
-
 
 class Operation(object):
     """
@@ -181,9 +179,9 @@ class Control(Operation):
 
 class Var(object):
 
-    def __init__(self, name, typ=object, optional=False):
+    def __init__(self, name, type=object, optional=False):
         self.name = name
-        self.type = typ
+        self.type = type
         self.optional = optional
 
     def __repr__(self):
@@ -194,8 +192,10 @@ class Var(object):
         Operation equality is based on name of layer.
         (__eq__ and __hash__ must be overridden together)
         """
-        return bool(self.name is not None and
-                    self.name == getattr(other, 'name', None))
+        return bool((self.name is not None and
+                    self.name == getattr(other, 'name', None)) and
+                    self.type is not None and
+                    self.type == getattr(other, 'type', None))
 
     def __hash__(self):
         return hash(self.name)

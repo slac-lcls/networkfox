@@ -7,7 +7,7 @@ import networkx as nx
 
 from io import StringIO
 
-from .base import Operation, Control
+from .base import Operation, Control, Var
 
 
 class DataPlaceholderNode(str):
@@ -75,7 +75,8 @@ class Network(object):
         # add nodes and edges to graph describing the data needs for this layer
         for n in operation.needs:
             self.graph.add_edge(DataPlaceholderNode(n.name), operation)
-            self.graph.nodes[n.name]['type'] = n.type
+            if 'type' not in self.graph.nodes[n.name]:
+                self.graph.nodes[n.name]['type'] = n.type
 
             if operation.color:
                 self.graph.nodes[operation]['color'] = operation.color
@@ -83,7 +84,8 @@ class Network(object):
         # add nodes and edges to graph describing what this layer provides
         for p in operation.provides:
             self.graph.add_edge(operation, DataPlaceholderNode(p.name))
-            self.graph.nodes[p.name]['type'] = p.type
+            if 'type' not in self.graph.nodes[p.name]:
+                self.graph.nodes[p.name]['type'] = p.type
 
         if isinstance(operation, Control) and hasattr(operation, 'condition_needs'):
             for n in operation.condition_needs:
@@ -113,7 +115,6 @@ class Network(object):
 
         # clear compiled steps
         self.steps = []
-
 
         # create an execution order such that each layer's needs are provided.
         try:
@@ -156,10 +157,17 @@ class Network(object):
                 # predecessor may be deleted if it is a data placeholder that
                 # is no longer needed by future Operations.
                 for predecessor in self.graph.predecessors(node):
-                    typ = self.graph.nodes[predecessor]
+                    var = Var(predecessor, self.graph.nodes[predecessor]['type'])
+
+                    if var not in node.needs:
+                        for need in node.needs:
+                            if need.name == var.name:
+                                break
+                        raise TypeError("Type mismatch. Expected: %s Got: %s" % (need, var))
 
                     if self._debug:
                         print("checking if node %s can be deleted" % predecessor)
+
                     predecessor_still_needed = False
                     for future_node in ordered_nodes[i+1:]:
                         if isinstance(future_node, Operation):

@@ -2,15 +2,13 @@
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 
 import math
-import pickle
 
 from pprint import pprint
 from operator import add, mul
 from numpy.testing import assert_raises
 
-import graphkit.network as network
 import graphkit.modifiers as modifiers
-from graphkit import operation, compose, Operation, If, ElseIf, Else
+from graphkit import operation, compose, If, ElseIf, Else
 
 
 def test_network():
