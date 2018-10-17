@@ -255,6 +255,8 @@ class Network(object):
             if isinstance(step, Operation):
                 if step.color == color and step in necessary_nodes:
                     necessary_steps.append(step)
+                elif isinstance(step, Control) and step in necessary_nodes:
+                    necessary_steps.append(step)
             else:
                 if step in necessary_nodes:
                     necessary_steps.append(step)
@@ -309,10 +311,10 @@ class Network(object):
                 if hasattr(step, 'condition'):
                     if_true = step._compute_condition(cache)
                     if if_true:
-                        layer_outputs = step._compute(cache)
+                        layer_outputs = step._compute(cache, color)
                         cache.update(layer_outputs)
                 elif not if_true:
-                    layer_outputs = step._compute(cache)
+                    layer_outputs = step._compute(cache, color)
                     cache.update(layer_outputs)
                     if_true = False
 

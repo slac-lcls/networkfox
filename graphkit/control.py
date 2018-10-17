@@ -22,8 +22,8 @@ class If(Control):
         inputs = [named_inputs[d] for d in self.condition_needs]
         return self.condition(*inputs)
 
-    def _compute(self, named_inputs):
-        return self.graph(named_inputs)
+    def _compute(self, named_inputs, color=None):
+        return self.graph(named_inputs, color=color)
 
 
 class ElseIf(If):
@@ -43,5 +43,5 @@ class Else(Control):
         self.graph = compose(name=self.name)(*args)
         return self
 
-    def _compute(self, named_inputs):
-        return self.graph(named_inputs)
+    def _compute(self, named_inputs, color=None):
+        return self.graph(named_inputs, color=color)

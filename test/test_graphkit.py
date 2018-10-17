@@ -270,6 +270,31 @@ def test_color():
     assert res == {'ab': 6}
 
 
+def test_control_and_color():
+    graph = compose(name='graph')(
+        operation(name="mul1", needs=['a', 'b'], provides=['ab'], color='red')(mul),
+        If(name='if_less_than_2', needs=['ab'], provides=['d'], condition_needs=['i'], condition=lambda i: i < 2)(
+            operation(name='add', needs=['ab'], provides=['c'], color='red')(lambda ab: ab + 2),
+            operation(name='sub2', needs=['c'], provides=['d'], color='red')(lambda c: c - 2)
+        ),
+        ElseIf(name='elseif', needs=['ab'], provides=['d'], condition_needs=['ab'], condition=lambda ab: ab > 2)(
+            operation(name='mul2', needs=['ab'], provides=['d'], color='blue')(lambda ab: ab*10)
+        ),
+        Else(name='else_less_than_2', needs=['ab'], provides=['d'])(
+            operation(name='sub', needs=['ab'], provides=['c'], color='red')(lambda ab: ab - 1),
+            operation(name='add2', needs=['c'], provides=['d'], color='red')(lambda c: c + 1)
+        ),
+        operation(name='div', needs=['d'], provides=['e'], color='blue')(lambda d: d/2)
+    )
+
+    res = graph({'a': 1, 'b': 3, 'i': 3}, color='red')
+    assert res == {'ab': 3}
+
+    res.update({'i': 3})
+    res2 = graph(res, color='blue')
+    assert res2 == {'d': 30, 'e': 15.0}
+
+
 def test_type_checking():
 
     def abspow(a, p=3):
