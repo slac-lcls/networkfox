@@ -34,7 +34,7 @@ class Operation(object):
         self.needs = kwargs.get('needs')
         self.provides = kwargs.get('provides')
         self.params = kwargs.get('params', {})
-        self.color = kwargs.get('color', set())
+        self.color = kwargs.get('color', None)
         self.order = 0
 
         # call _after_init as final step of initialization

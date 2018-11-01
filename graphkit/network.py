@@ -7,7 +7,7 @@ import networkx as nx
 
 from io import StringIO
 
-from .base import Operation, Control
+from .base import Operation, Control, Var
 
 
 class DataPlaceholderNode(str):
@@ -213,6 +213,7 @@ class Network(object):
         cache_key = (*inputs_keys, outputs, color)
         if cache_key in self._necessary_steps_cache:
             return self._necessary_steps_cache[cache_key]
+
         graph = self.graph
         if not outputs:
 
@@ -248,20 +249,17 @@ class Network(object):
             # Get rid of the unnecessary nodes from the set of necessary ones.
             necessary_nodes -= unnecessary_nodes
 
-        if color:
-            necessary_steps = []
+        necessary_steps = []
 
-            for step in self.steps:
-                if isinstance(step, Operation):
-                    if color in step.color and step in necessary_nodes:
-                        necessary_steps.append(step)
-                    elif isinstance(step, Control) and step in necessary_nodes:
-                        necessary_steps.append(step)
-                else:
-                    if step in necessary_nodes:
-                        necessary_steps.append(step)
-        else:
-            necessary_steps = [step for step in self.steps if step in necessary_nodes]
+        for step in self.steps:
+            if isinstance(step, Operation):
+                if step.color == color and step in necessary_nodes:
+                    necessary_steps.append(step)
+                elif isinstance(step, Control) and step in necessary_nodes:
+                    necessary_steps.append(step)
+            else:
+                if step in necessary_nodes:
+                    necessary_steps.append(step)
 
         # save this result in a precomputed cache for future lookup
         self._necessary_steps_cache[cache_key] = necessary_steps
@@ -288,6 +286,7 @@ class Network(object):
 
         :returns: a dictionary of output data objects, keyed by name.
         """
+
         # assert that network has been compiled
         assert self.steps, "network must be compiled before calling compute."
         assert isinstance(outputs, (list, tuple)) or outputs is None,\

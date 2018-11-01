@@ -117,11 +117,6 @@ class operation(Operation):
 
         if 'color' in kwargs and type(kwargs['color']) == str:
             assert kwargs['color'], "empty string provided for `color` parameters"
-            color = kwargs['color']
-            kwargs['color'] = set()
-            kwargs['color'].add(color)
-        else:
-            kwargs['color'] = set(kwargs['color'])
 
         return kwargs
 
