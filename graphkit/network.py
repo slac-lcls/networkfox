@@ -7,7 +7,7 @@ import networkx as nx
 
 from io import StringIO
 
-from .base import Operation, Control, Var
+from .base import Operation, NetworkOperation, Control
 
 
 class DataPlaceholderNode(str):
@@ -82,9 +82,6 @@ class Network(object):
                 raise TypeError("Duplicate nodes with different types. Needs: %s Expected: %s Got: %s" %
                                 (n.name, self.graph.nodes[n.name]['type'], n.type))
 
-            if operation.color:
-                self.graph.nodes[operation]['color'] = operation.color
-
         # add nodes and edges to graph describing what this layer provides
         for p in operation.provides:
             self.graph.add_edge(operation, DataPlaceholderNode(p.name))
@@ -94,6 +91,9 @@ class Network(object):
             elif self.graph.nodes[p.name]['type'] != p.type:
                 raise TypeError("Duplicate nodes with different types. Provides: %s Expected: %s Got: %s" %
                                 (p.name, self.graph.nodes[p.name]['type'], p.type))
+
+        if operation.color:
+            self.graph.nodes[operation]['color'] = operation.color
 
         if isinstance(operation, Control) and hasattr(operation, 'condition_needs'):
             for n in operation.condition_needs:
@@ -213,7 +213,6 @@ class Network(object):
         cache_key = (*inputs_keys, outputs, color)
         if cache_key in self._necessary_steps_cache:
             return self._necessary_steps_cache[cache_key]
-
         graph = self.graph
         if not outputs:
 
@@ -221,10 +220,15 @@ class Network(object):
             # nodes that are reachable from one of the inputs.  Ignore input
             # names that aren't in the graph.
             necessary_nodes = set()
+            subgraphs = list(filter(lambda node: isinstance(node, NetworkOperation) or isinstance(node, Control), graph.nodes))
             for input_name in iter(inputs):
                 if graph.has_node(input_name):
                     necessary_nodes |= nx.descendants(graph, input_name)
-
+                for subgraph in subgraphs:
+                    if isinstance(subgraph, NetworkOperation) and subgraph.net.graph.has_node(input_name):
+                        necessary_nodes.add(subgraph)
+                    elif isinstance(subgraph, Control) and subgraph.graph.net.graph.has_node(input_name):
+                        necessary_nodes.add(subgraph)
         else:
 
             # If the caller requested a subset of outputs, find any nodes that
@@ -331,7 +335,7 @@ class Network(object):
                 layer_outputs = step._compute(cache)
 
                 for output in step.provides:
-                    if not isinstance(layer_outputs[output.name], output.type):
+                    if output.name in layer_outputs and not isinstance(layer_outputs[output.name], output.type):
                         raise TypeError("Type mismatch. Operation: %s Output: %s Expected: %s Got: %s" %
                                         (step.name, output.name, output.type, type(layer_outputs[output.name])))
 
