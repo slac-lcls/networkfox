@@ -313,8 +313,13 @@ class Network(object):
 
             if isinstance(step, Control):
                 if hasattr(step, 'condition'):
-                    if_true = step._compute_condition(cache)
-                    if if_true:
+                    if all(map(lambda need: need in cache, step.condition_needs)):
+                        if_true = step._compute_condition(cache)
+                        if if_true:
+                            layer_outputs = step._compute(cache, color)
+                            cache.update(layer_outputs)
+                    else:
+                        # assume short circuiting if statement
                         layer_outputs = step._compute(cache, color)
                         cache.update(layer_outputs)
                 elif not if_true:
