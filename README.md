@@ -1,28 +1,34 @@
-# GraphKit
+# NetworkFoX
 
-[![PyPI version](https://badge.fury.io/py/graphkit.svg)](https://badge.fury.io/py/graphkit) [![Build Status](https://travis-ci.org/yahoo/graphkit.svg?branch=master)](https://travis-ci.org/yahoo/graphkit) [![codecov](https://codecov.io/gh/yahoo/graphkit/branch/master/graph/badge.svg)](https://codecov.io/gh/yahoo/graphkit)
+<!-- [![PyPI version](https://badge.fury.io/py/networkfox.svg)](https://badge.fury.io/py/networkfox) [![Build Status](https://travis-ci.org/yahoo/networkfox.svg?branch=master)](https://travis-ci.org/yahoo/networkfox) [![codecov](https://codecov.io/gh/yahoo/networkfox/branch/master/graph/badge.svg)](https://codecov.io/gh/yahoo/networkfox) -->
 
-[Full Documentation](https://pythonhosted.org/graphkit/)
-
-> It's a DAG all the way down
+<!-- [Full Documentation](https://pythonhosted.org/networkfox/) -->
 
 ## Lightweight computation graphs for Python
 
-GraphKit is a lightweight Python module for creating and running ordered graphs of computations, where the nodes of the graph correspond to computational operations, and the edges correspond to output --> input dependencies between those operations.  Such graphs are useful in computer vision, machine learning, and many other domains.
+NetworkFoX is a fork of graphkit, which adds the ability to do computations on top of NetworkX graphs. 
+It stands for Network F of X. 
+
+The features NetworkFoX adds to graphkit are:
+- Control flow nodes, such as If, ElseIf, and Else.
+- Type annotations and type checking for function inputs and outputs.
+- Coloring nodes in a graph and evaluating only nodes of a given color.
+- Picklable graphs.
+- Fixing various bugs in graphkit.
 
 ## Quick start
 
 Here's how to install:
 
 ```
-pip install graphkit
+pip install networkfox
 ```    
 
-Here's a Python script with an example GraphKit computation graph that produces multiple outputs (`a * b`, `a - a * b`, and `abs(a - a * b) ** 3`):
+Here's a Python script with an example Networkfox computation graph that produces multiple outputs (`a * b`, `a - a * b`, and `abs(a - a * b) ** 3`):
 
 ```
 from operator import mul, sub
-from graphkit import compose, operation
+from networkfox import compose, operation
 
 # Computes |a|^p.
 def abspow(a, p):
@@ -49,7 +55,7 @@ out = graph({'a': 2, 'b': 5}, outputs=["a_minus_ab"])
 print(out)
 ```
 
-As you can see, any function can be used as an operation in GraphKit, even ones imported from system modules!
+As you can see, any function can be used as an operation in Networkfox, even ones imported from system modules!
 
 # License
 

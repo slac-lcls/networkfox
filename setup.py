@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Copyright 2018 Stanford University
 # Copyright 2016, Yahoo Inc.
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 import os
@@ -7,27 +8,23 @@ import io
 from setuptools import setup
 
 LONG_DESCRIPTION = """
-GraphKit is a lightweight Python module for creating and running ordered graphs
-of computations, where the nodes of the graph correspond to computational
-operations, and the edges correspond to output --> input dependencies between
-those operations.  Such graphs are useful in computer vision, machine learning,
-and many other domains.
+Networkfox is a fork of graphkit that adds things like control flow, coloring, and picklable graphs.
 """
 
 # Grab the version using convention described by flask
 # https://github.com/pallets/flask/blob/master/setup.py#L10
-with io.open('graphkit/__init__.py', 'rt', encoding='utf8') as f:
+with io.open('networkfox/__init__.py', 'rt', encoding='utf8') as f:
     version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
 
 setup(
-     name='graphkit',
+     name='networkfox',
      version=version,
      description='Lightweight computation graphs for Python',
      long_description=LONG_DESCRIPTION,
-     author='Huy Nguyen, Arel Cordero, Pierre Garrigues, Rob Hess, Tobi Baumgartner, Clayton Mellina',
-     author_email='huyng@yahoo-inc.com',
-     url='http://github.com/yahoo/graphkit',
-     packages=['graphkit'],
+     author='Seshu Yamajala, Huy Nguyen, Arel Cordero, Pierre Garrigues, Rob Hess, Tobi Baumgartner, Clayton Mellina',
+     author_email='',
+     url='http://github.com/slac-lcls/networkfox',
+     packages=['networkfox'],
      install_requires=['networkx'],
      extras_require={
           'plot': ['pydot', 'matplotlib']

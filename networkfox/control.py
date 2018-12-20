@@ -1,3 +1,6 @@
+# Copyright 2018 Stanford University
+# Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
+
 """
 This sub-module contains statements that can be used for conditional evaluation of the graph.
 """

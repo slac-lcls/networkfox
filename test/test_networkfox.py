@@ -1,3 +1,4 @@
+# Copyright 2018 Stanford University
 # Copyright 2016, Yahoo Inc.
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 
@@ -7,8 +8,8 @@ from pprint import pprint
 from operator import add, sub, mul
 from numpy.testing import assert_raises
 
-import graphkit.modifiers as modifiers
-from graphkit import operation, compose, If, ElseIf, Else, Var
+import networkfox.modifiers as modifiers
+from networkfox import operation, compose, If, ElseIf, Else, Var
 
 
 def test_network():

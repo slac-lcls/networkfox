@@ -3,14 +3,14 @@
 Graph Composition and Use
 =========================
 
-GraphKit's ``compose`` class handles the work of tying together ``operation`` instances into a runnable computation graph.
+Networkfox's ``compose`` class handles the work of tying together ``operation`` instances into a runnable computation graph.
 
 The ``compose`` class
 ---------------------
 
 For now, here's the specification of ``compose``.  We'll get into how to use it in a second.
 
-.. autoclass:: graphkit.compose
+.. autoclass:: networkfox.compose
    :members: __call__
 
 
@@ -22,7 +22,7 @@ Simple composition of operations
 The simplest use case for ``compose`` is assembling a collection of individual operations into a runnable computation graph.  The example script from :ref:`quick-start` illustrates this well::
 
    from operator import mul, sub
-   from graphkit import compose, operation
+   from networkfox import compose, operation
 
    # Computes |a|^p.
    def abspow(a, p):
@@ -65,7 +65,7 @@ By default, calling a graph on a set of inputs will yield all of that graph's ou
    # Prints "{'a_minus_ab': -8}".
    print(out)
 
-When using ``outputs`` to request only a subset of a graph's outputs, GraphKit executes only the ``operation`` nodes in the graph that are on a path from the inputs to the requested outputs.  For example, the ``abspow1`` operation will not be executed here.
+When using ``outputs`` to request only a subset of a graph's outputs, Networkfox executes only the ``operation`` nodes in the graph that are on a path from the inputs to the requested outputs.  For example, the ``abspow1`` operation will not be executed here.
 
 Short-circuiting a graph computation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,19 +1,19 @@
-.. graphkit documentation master file, created by
+.. networkfox documentation master file, created by
    sphinx-quickstart on Tue Jun 16 19:10:27 2016.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
 
 ========
-GraphKit
+Networkfox
 ========
 
-.. image:: https://badge.fury.io/py/graphkit.svg
-   :target: https://badge.fury.io/py/graphkit
-.. image:: https://travis-ci.org/yahoo/graphkit.svg?branch=master
-   :target: https://travis-ci.org/yahoo/graphkit
-.. image:: https://codecov.io/gh/yahoo/graphkit/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/yahoo/graphkit
+.. image:: https://badge.fury.io/py/networkfox.svg
+   :target: https://badge.fury.io/py/networkfox
+.. image:: https://travis-ci.org/yahoo/networkfox.svg?branch=master
+   :target: https://travis-ci.org/yahoo/networkfox
+.. image:: https://codecov.io/gh/yahoo/networkfox/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/yahoo/networkfox
 
 **It's a DAG all the way down**
 
@@ -27,7 +27,7 @@ GraphKit
 Lightweight computation graphs for Python
 -----------------------------------------
 
-GraphKit is a lightweight Python module for creating and running ordered graphs of computations, where the nodes of the graph correspond to computational operations, and the edges correspond to output --> input dependencies between those operations.  Such graphs are useful in computer vision, machine learning, and many other domains.
+Networkfox is a lightweight Python module for creating and running ordered graphs of computations, where the nodes of the graph correspond to computational operations, and the edges correspond to output --> input dependencies between those operations.  Such graphs are useful in computer vision, machine learning, and many other domains.
 
 .. _quick-start:
 
@@ -36,12 +36,12 @@ Quick start
 
 Here's how to install::
 
-   pip install graphkit
+   pip install networkfox
 
-Here's a Python script with an example GraphKit computation graph that produces multiple outputs (``a * b``, ``a - a * b``, and ``abs(a - a * b) ** 3``)::
+Here's a Python script with an example Networkfox computation graph that produces multiple outputs (``a * b``, ``a - a * b``, and ``abs(a - a * b) ** 3``)::
 
    from operator import mul, sub
-   from graphkit import compose, operation
+   from networkfox import compose, operation
 
    # Computes |a|^p.
    def abspow(a, p):
@@ -67,7 +67,7 @@ Here's a Python script with an example GraphKit computation graph that produces 
    # Prints "{'a_minus_ab': -8}".
    print(out)
 
-As you can see, any function can be used as an operation in GraphKit, even ones imported from system modules!
+As you can see, any function can be used as an operation in Networkfox, even ones imported from system modules!
 
 License
 -------

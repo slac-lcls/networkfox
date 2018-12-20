@@ -1,6 +1,10 @@
+# Copyright 2018 Stanford University
+# Copyright 2016, Yahoo Inc.
+# Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
+
 """
 This sub-module contains input/output modifiers that can be applied to
-arguments to ``needs`` and ``provides`` to let GraphKit know it should treat
+arguments to ``needs`` and ``provides`` to let NetworkFoX know it should treat
 them differently.
 
 Copyright 2016, Yahoo Inc.
@@ -20,8 +24,8 @@ class optional(str):
 
     Here is an example of an operation that uses an optional argument::
 
-        from graphkit import operation, compose
-        from graphkit.modifiers import optional
+        from networkfox import operation, compose
+        from networkfox.modifiers import optional
 
         # Function that adds either two or three numbers.
         def myadd(a, b, c=0):

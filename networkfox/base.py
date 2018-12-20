@@ -1,3 +1,4 @@
+# Copyright 2018 Stanford University
 # Copyright 2016, Yahoo Inc.
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 
@@ -141,7 +142,7 @@ class NetworkOperation(Operation):
         return self._compute(*args, **kwargs)
 
     def plot(self, filename=None, show=False):
-        self.net.plot(filename=filename, show=show)
+        return self.net.plot(filename=filename, show=show)
 
     def __getstate__(self):
         state = Operation.__getstate__(self)

@@ -1,7 +1,7 @@
 Operations
 ==========
 
-At a high level, an operation is a node in a computation graph.  GraphKit uses an ``operation`` class to represent these computations.
+At a high level, an operation is a node in a computation graph.  Networkfox uses an ``operation`` class to represent these computations.
 
 The ``operation`` class
 -----------------------
@@ -10,7 +10,7 @@ The ``operation`` class specifies an operation in a computation graph, including
 
 There are many ways to instantiate an ``operation``, and we'll get into more detail on these later.  First off, though, here's the specification for the ``operation`` class:
 
-.. autoclass:: graphkit.operation
+.. autoclass:: networkfox.operation
    :members: __init__, __call__
    :member-order: bysource
 
@@ -21,7 +21,7 @@ Operations are just functions
 At the heart of each ``operation`` is just a function, any arbitrary function.  Indeed, you can instantiate an ``operation`` with a function and then call it just like the original function, e.g.::
 
    from operator import add
-   from graphkit import operation
+   from networkfox import operation
 
    add_op = operation(name='add_op', needs=['a', 'b'], provides=['a_plus_b'])(add)
 
@@ -38,12 +38,12 @@ Of course, each ``operation`` is more than just a function.  It is a node in a c
 
 * ``needs``: this argument names data that is needed as input by a given ``operation``.  Each piece of data named in needs may either be provided by another ``operation`` in the same graph (i.e. specified in the ``provides`` argument of that ``operation``), or it may be specified as a named input to a graph computation (more on graph computations :ref:`here <graph-computations>`).
 
-When many operations are composed into a computation graph (see :ref:`graph-composition` for more on that), Graphkit matches up the values in their ``needs`` and ``provides`` to form the edges of that graph.
+When many operations are composed into a computation graph (see :ref:`graph-composition` for more on that), Networkfox matches up the values in their ``needs`` and ``provides`` to form the edges of that graph.
 
 Let's look again at the operations from the script in :ref:`quick-start`, for example::
 
    from operator import mul, sub
-   from graphkit import compose, operation
+   from networkfox import compose, operation
 
    # Computes |a|^p.
    def abspow(a, p):
@@ -80,7 +80,7 @@ Decorator specification
 
 If you are defining your computation graph and the functions that comprise it all in the same script, the decorator specification of ``operation`` instances might be particularly useful, as it allows you to assign computation graph structure to functions as they are defined.  Here's an example::
 
-   from graphkit import operation, compose
+   from networkfox import operation, compose
 
    @operation(name='foo_op', needs=['a', 'b', 'c'], provides='foo')
    def foo(a, b, c):
@@ -94,7 +94,7 @@ Functional specification
 If the functions underlying your computation graph operations are defined elsewhere than the script in which your graph itself is defined (e.g. they are defined in another module, or they are system functions), you can use the functional specification of ``operation`` instances::
 
    from operator import add, mul
-   from graphkit import operation, compose
+   from networkfox import operation, compose
 
    add_op = operation(name='add_op', needs=['a', 'b'], provides='sum')(add)
    mul_op = operation(name='mul_op', needs=['c', 'sum'], provides='product')(mul)
@@ -103,7 +103,7 @@ If the functions underlying your computation graph operations are defined elsewh
 
 The functional specification is also useful if you want to create multiple ``operation`` instances from the same function, perhaps with different parameter values, e.g.::
 
-   from graphkit import operation, compose
+   from networkfox import operation, compose
 
    def mypow(a, p=2):
       return a ** p
@@ -115,7 +115,7 @@ The functional specification is also useful if you want to create multiple ``ope
 
 A slightly different approach can be used here to accomplish the same effect by creating an operation "factory"::
 
-   from graphkit import operation, compose
+   from networkfox import operation, compose
 
    def mypow(a, p=2):
       return a ** p
@@ -131,6 +131,6 @@ A slightly different approach can be used here to accomplish the same effect by 
 Modifiers on ``operation`` inputs and outputs
 ---------------------------------------------
 
-Certain modifiers are available to apply to input or output values in ``needs`` and ``provides``, for example to designate an optional input.  These modifiers are available in the ``graphkit.modifiers`` module:
+Certain modifiers are available to apply to input or output values in ``needs`` and ``provides``, for example to designate an optional input.  These modifiers are available in the ``networkfox.modifiers`` module:
 
-.. autoclass:: graphkit.modifiers.optional
+.. autoclass:: networkfox.modifiers.optional
