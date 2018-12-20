@@ -6,7 +6,7 @@
 
 ## Lightweight computation graphs for Python
 
-NetworkFoX is a fork of graphkit, which adds the ability to do computations on top of NetworkX graphs. 
+NetworkFoX is a fork of [graphkit](https://github.com/yahoo/graphkit), which adds the ability to do computations on top of NetworkX graphs. 
 It stands for Network F of X. 
 
 The features NetworkFoX adds to graphkit are:
