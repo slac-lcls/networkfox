@@ -49,6 +49,9 @@ class Operation(object):
         return bool(self.name is not None and
                     self.name == getattr(other, 'name', None))
 
+    def __lt__(self, other):
+        return self.order < other.order
+
     def __hash__(self):
         """
         Operation equality is based on name of layer.
@@ -142,7 +145,7 @@ class NetworkOperation(Operation):
         return self._compute(*args, **kwargs)
 
     def plot(self, filename=None, show=False):
-        return self.net.plot(filename=filename, show=show)
+        return self.net.plot(self.name, filename=filename, show=show)
 
     def __getstate__(self):
         state = Operation.__getstate__(self)

@@ -4,6 +4,7 @@
 
 import time
 import os
+import uuid
 import networkx as nx
 
 from io import StringIO
@@ -247,7 +248,7 @@ class Network(object):
             necessary_nodes = set()
             for output_name in outputs:
                 if not graph.has_node(output_name):
-                    raise ValueError("graphkit graph does not have an output "
+                    raise ValueError("networkfox graph does not have an output "
                                      "node named %s" % output_name)
                 necessary_nodes |= nx.ancestors(graph, output_name)
 
@@ -380,7 +381,7 @@ class Network(object):
             # Note: list comprehensions exist in python 2.7+
             return {k: cache[k] for k in iter(cache) if k in outputs}
 
-    def plot(self, filename=None, show=False):
+    def plot(self, name=None, filename=None, show=False):
         """
         Plot the graph.
 
@@ -408,22 +409,41 @@ class Network(object):
                 return a
             return a.name
 
-        g = pydot.Dot(graph_type="digraph")
+        if name == 'graph':
+            name += '0'
+
+        g = pydot.Dot(graph_type="digraph", graph_name=name)
+        control_nodes = []
+        node_to_id = {}
 
         # draw nodes
         for nx_node in self.graph.nodes():
+            nid = str(uuid.uuid4())
+            node_to_id[get_node_name(nx_node)] = nid
             if isinstance(nx_node, DataPlaceholderNode):
-                node = pydot.Node(name=nx_node, shape="rect")
+                node = pydot.Node(name=nid, label=nx_node, shape="rect")
+            elif isinstance(nx_node, Control):
+                node = pydot.Node(name=nid, label=nx_node.name, shape='diamond')
+                control_nodes.append(nx_node.graph.plot())
             else:
-                node = pydot.Node(name=nx_node.name, shape="circle")
+                node = pydot.Node(name=nid, label=nx_node.name, shape="circle")
             g.add_node(node)
 
         # draw edges
         for src, dst in self.graph.edges():
-            src_name = get_node_name(src)
-            dst_name = get_node_name(dst)
-            edge = pydot.Edge(src=src_name, dst=dst_name)
+            sid = node_to_id[get_node_name(src)]
+            did = node_to_id[get_node_name(dst)]
+            edge = pydot.Edge(src=sid, dst=did)
             g.add_edge(edge)
+
+        for control, node_to_id in control_nodes:
+            cluster = pydot.Cluster(graph_name=control.get_name(), label=control.get_name())
+            for node in control.get_nodes():
+                cluster.add_node(node)
+            for edge in control.get_edges():
+                cluster.add_edge(edge)
+
+            g.add_subgraph(cluster)
 
         # save plot
         if filename:
@@ -432,7 +452,7 @@ class Network(object):
                 if ext.lower() == ".png":
                     fh.write(g.create_png())
                 elif ext.lower() == ".dot":
-                    fh.write(g.to_string())
+                    fh.write(g.to_string().encode())
                 elif ext.lower() in [".jpg", ".jpeg"]:
                     fh.write(g.create_jpeg())
                 elif ext.lower() == ".pdf":
@@ -450,4 +470,4 @@ class Network(object):
             plt.imshow(img, aspect="equal")
             plt.show()
 
-        return g
+        return (g, node_to_id)
