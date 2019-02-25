@@ -38,12 +38,6 @@ class FunctionalOperation(Operation):
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
 
-    def __getstate__(self):
-        state = Operation.__getstate__(self)
-        state['fn'] = self.__dict__['fn']
-        state['color'] = self.__dict__['color']
-        return state
-
 
 class operation(Operation):
     """

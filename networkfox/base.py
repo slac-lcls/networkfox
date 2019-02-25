@@ -95,33 +95,6 @@ class Operation(object):
         """
         pass
 
-    def __getstate__(self):
-        """
-        This allows your operation to be pickled.
-        Everything needed to instantiate your operation should be defined by the
-        following attributes: params, needs, provides, and name
-        No other piece of state should leak outside of these 4 variables
-        """
-
-        result = {}
-        # this check should get deprecated soon. its for downward compatibility
-        # with earlier pickled operation objects
-        if hasattr(self, 'params'):
-            result["params"] = self.__dict__['params']
-        result["needs"] = self.__dict__['needs']
-        result["provides"] = self.__dict__['provides']
-        result["name"] = self.__dict__['name']
-
-        return result
-
-    def __setstate__(self, state):
-        """
-        load from pickle and instantiate the detector
-        """
-        for k in iter(state):
-            self.__setattr__(k, state[k])
-        self._after_init()
-
     def __repr__(self):
         """
         Display more informative names for the Operation class
@@ -147,11 +120,6 @@ class NetworkOperation(Operation):
     def plot(self, filename=None, show=False):
         return self.net.plot(self.name, filename=filename, show=show)
 
-    def __getstate__(self):
-        state = Operation.__getstate__(self)
-        state['net'] = self.__dict__['net']
-        return state
-
 
 class Control(Operation):
 
@@ -164,6 +132,7 @@ class Control(Operation):
             provides = [Var(arg) for arg in kwargs['provides']]
             kwargs['provides'] = provides
 
+        self.graph = None
         super(Control, self).__init__(**kwargs)
 
     def __repr__(self):
