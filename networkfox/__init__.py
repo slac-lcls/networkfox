@@ -5,9 +5,8 @@
 __author__ = 'hnguyen'
 __version__ = '1.2.4'
 
-from .functional import operation, compose
+from .functional import operation, compose, If, Else
 
 # For backwards compatibility
 from .base import Operation, Var
 from .network import Network
-from .control import If, Else

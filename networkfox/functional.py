@@ -4,7 +4,7 @@
 
 from itertools import chain
 
-from .base import Operation, NetworkOperation, Var
+from .base import Operation, NetworkOperation, Var, Control
 from .network import Network
 from .modifiers import optional
 
@@ -222,8 +222,60 @@ class compose(object):
 
         # compile network
         net = Network()
+
+        control_nodes = list(filter(lambda op: isinstance(op, Control), operations))
+        for idx, control_node in enumerate(control_nodes):
+            if isinstance(control_node, If):
+                try:
+                    if isinstance(control_nodes[idx+1], Else):
+                        control_node.Else = control_nodes[idx+1]
+                except IndexError:
+                    continue
+            elif isinstance(control_node, Else):
+                if not isinstance(control_nodes[idx-1], If):
+                    raise Exception("Else not preceded by If")
+                control_node.If = control_nodes[idx-1]
+
         for op in operations:
             net.add_op(op)
         net.compile()
 
         return NetworkOperation(name=self.name, needs=needs, provides=provides, params={}, net=net)
+
+
+class If(Control):
+
+    def __init__(self, condition_needs, condition, **kwargs):
+        super(If, self).__init__(**kwargs)
+        self.order = 1
+        self.condition_needs = condition_needs
+        self.condition = condition
+        self.computed_condition = False
+        self.Else = None
+
+    def __call__(self, *args):
+        self.graph = compose(name=self.name)(*args)
+        return self
+
+    def _compute_condition(self, named_inputs):
+        inputs = [named_inputs[d] for d in self.condition_needs]
+        self.computed_condition = self.condition(*inputs)
+        return self.computed_condition
+
+    def _compute(self, named_inputs, color=None):
+        return self.graph(named_inputs, color=color)
+
+
+class Else(Control):
+
+    def __init__(self, **kwargs):
+        super(Else, self).__init__(**kwargs)
+        self.order = 2
+        self.If = None
+
+    def __call__(self, *args):
+        self.graph = compose(name=self.name)(*args)
+        return self
+
+    def _compute(self, named_inputs, color=None):
+        return self.graph(named_inputs, color=color)

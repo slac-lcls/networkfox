@@ -323,9 +323,7 @@ class Network(object):
             # the upnext list contains a list of operations for scheduling
             # in the current round of scheduling
             upnext = []
-
             for node in necessary_nodes:
-
                 # only delete if all successors for the data node have been executed
                 if isinstance(node, DeleteInstruction):
                     if outputs and node not in outputs:
@@ -338,15 +336,13 @@ class Network(object):
                 elif isinstance(node, Control):
                     if hasattr(node, 'condition'):
                         if all(map(lambda need: need in cache, node.condition_needs)):
-                            if_true = node._compute_condition(cache)
-                            if if_true:
+                            if node._compute_condition(cache):
                                 if ready_to_schedule_operation(node, cache, has_executed):
                                     upnext.append((node, cache, color))
                         else:
                             # assume short circuiting if statement
-                            if ready_to_schedule_operation(node, cache, has_executed):
-                                upnext.append((node, cache, color))
-                    elif not if_true:
+                            upnext.append((node, cache, color))
+                    elif not node.If.computed_condition:
                         if ready_to_schedule_operation(node, cache, has_executed):
                             upnext.append((node, cache, color))
 
@@ -388,22 +384,20 @@ class Network(object):
         """
 
         self.times = {}
-        if_true = False
 
         for node in necessary_nodes:
 
             if isinstance(node, Control):
                 if hasattr(node, 'condition'):
                     if all(map(lambda need: need in cache, node.condition_needs)):
-                        if_true = node._compute_condition(cache)
-                        if if_true:
+                        if node._compute_condition(cache):
                             layer_outputs = node._compute(cache, color)
                             cache.update(layer_outputs)
                     else:
                         # assume short circuiting if statement
                         layer_outputs = node._compute(cache, color)
                         cache.update(layer_outputs)
-                elif not if_true:
+                elif not node.If.computed_condition:
                     layer_outputs = node._compute(cache, color)
                     cache.update(layer_outputs)
 
@@ -568,6 +562,7 @@ def ready_to_schedule_operation(op, cache, has_executed):
             return False
 
     return True
+
 
 def ready_to_delete_data_node(name, has_executed, graph):
     """
