@@ -273,7 +273,101 @@ class Network(object):
         # Return an ordered list of the needed steps.
         return necessary_steps
 
-    def compute(self, outputs, named_inputs, color=None):
+    def compute(self, outputs, named_inputs, color=None, pool=None):
+
+        # assert that network has been compiled
+        assert self.steps, "network must be compiled before calling compute."
+        assert isinstance(outputs, (list, tuple)) or outputs is None,\
+            "The outputs argument must be a list"
+
+        # start with fresh data cache
+        cache = {}
+
+        # add inputs to data cache
+        cache.update(named_inputs)
+
+        # Find the subset of steps we need to run to get to the requested
+        # outputs from the provided inputs.
+        necessary_nodes = self._find_necessary_steps(outputs, named_inputs, color)
+
+        if pool:
+            self._compute_parallel(list(necessary_nodes), cache, outputs, named_inputs, pool, color)
+        else:
+            self._compute_serial(necessary_nodes, cache, outputs, named_inputs, color)
+
+        if not outputs:
+            # Return cache as output including intermediate data nodes,
+            # but excluding input.
+            return {k: cache[k] for k in set(cache) - set(named_inputs)}
+
+        else:
+            # Filter outputs to just return what's needed.
+            # Note: list comprehensions exist in python 2.7+
+            return {k: cache[k] for k in iter(cache) if k in outputs}
+
+    def _compute_parallel(self, necessary_nodes, cache, outputs, named_inputs, pool, color=None):
+        """
+        This method runs the graph using a parallel pool of thread executors.
+        You may achieve lower total latency if your graph is sufficiently
+        sub divided into operations using this method.
+        """
+
+        # this keeps track of all nodes that have already executed
+        has_executed = set()
+
+        # with each loop iteration, we determine a set of operations that can be
+        # scheduled, then schedule them onto a thread pool, then collect their
+        # results onto a memory cache for use upon the next iteration.
+        while True:
+
+            # the upnext list contains a list of operations for scheduling
+            # in the current round of scheduling
+            upnext = []
+
+            for node in necessary_nodes:
+
+                # only delete if all successors for the data node have been executed
+                if isinstance(node, DeleteInstruction):
+                    if outputs and node not in outputs:
+                        if ready_to_delete_data_node(node,
+                                                     has_executed,
+                                                     self.graph):
+                            if node in cache:
+                                cache.pop(node)
+
+                elif isinstance(node, Control):
+                    if hasattr(node, 'condition'):
+                        if all(map(lambda need: need in cache, node.condition_needs)):
+                            if_true = node._compute_condition(cache)
+                            if if_true:
+                                if ready_to_schedule_operation(node, cache, has_executed):
+                                    upnext.append((node, cache, color))
+                        else:
+                            # assume short circuiting if statement
+                            if ready_to_schedule_operation(node, cache, has_executed):
+                                upnext.append((node, cache, color))
+                    elif not if_true:
+                        if ready_to_schedule_operation(node, cache, has_executed):
+                            upnext.append((node, cache, color))
+
+                # continue if this node is anything but an operation node
+                elif not isinstance(node, Operation):
+                    continue
+
+                elif ready_to_schedule_operation(node, cache, has_executed):
+                    upnext.append((node, cache))
+
+            # stop if no nodes left to schedule, exit out of the loop
+            if len(upnext) == 0:
+                break
+
+            done_iterator = pool.starmap(comp, upnext)
+            for op, result in done_iterator:
+                cache.update(result)
+                has_executed.add(op)
+                necessary_nodes.remove(op)
+
+    def _compute_serial(self, necessary_nodes, cache, outputs, named_inputs, color=None):
         """
         This method runs the graph one operation at a time in a single thread
         Any inputs to the network must be passed in by name.
@@ -293,93 +387,67 @@ class Network(object):
         :returns: a dictionary of output data objects, keyed by name.
         """
 
-        # assert that network has been compiled
-        assert self.steps, "network must be compiled before calling compute."
-        assert isinstance(outputs, (list, tuple)) or outputs is None,\
-            "The outputs argument must be a list"
-
-        # start with fresh data cache
-        cache = {}
-
-        # add inputs to data cache
-        cache.update(named_inputs)
-
-        # Find the subset of steps we need to run to get to the requested
-        # outputs from the provided inputs.
-        all_steps = self._find_necessary_steps(outputs, named_inputs, color)
-
         self.times = {}
         if_true = False
 
-        for step in all_steps:
+        for node in necessary_nodes:
 
-            if isinstance(step, Control):
-                if hasattr(step, 'condition'):
-                    if all(map(lambda need: need in cache, step.condition_needs)):
-                        if_true = step._compute_condition(cache)
+            if isinstance(node, Control):
+                if hasattr(node, 'condition'):
+                    if all(map(lambda need: need in cache, node.condition_needs)):
+                        if_true = node._compute_condition(cache)
                         if if_true:
-                            layer_outputs = step._compute(cache, color)
+                            layer_outputs = node._compute(cache, color)
                             cache.update(layer_outputs)
                     else:
                         # assume short circuiting if statement
-                        layer_outputs = step._compute(cache, color)
+                        layer_outputs = node._compute(cache, color)
                         cache.update(layer_outputs)
                 elif not if_true:
-                    layer_outputs = step._compute(cache, color)
+                    layer_outputs = node._compute(cache, color)
                     cache.update(layer_outputs)
-                    if_true = False
 
-            elif isinstance(step, Operation):
+            elif isinstance(node, Operation):
 
                 if self._debug:
                     print("-"*32)
-                    print("executing step: %s" % step.name)
+                    print("executing node: %s" % node.name)
 
                 # time execution...
                 t0 = time.time()
 
                 # compute layer outputs
-                layer_outputs = step._compute(cache)
+                layer_outputs = node._compute(cache)
 
-                for output in step.provides:
+                for output in node.provides:
                     if output.name in layer_outputs and not isinstance(layer_outputs[output.name], output.type):
                         raise TypeError("Type mismatch. Operation: %s Output: %s Expected: %s Got: %s" %
-                                        (step.name, output.name, output.type, type(layer_outputs[output.name])))
+                                        (node.name, output.name, output.type, type(layer_outputs[output.name])))
 
                 # add outputs to cache
                 cache.update(layer_outputs)
 
                 # record execution time
                 t_complete = round(time.time() - t0, 5)
-                self.times[step.name] = t_complete
+                self.times[node.name] = t_complete
                 if self._debug:
-                    print("step completion time: %s" % t_complete)
+                    print("node completion time: %s" % t_complete)
 
             # Process DeleteInstructions by deleting the corresponding data
             # if possible.
-            elif isinstance(step, DeleteInstruction):
+            elif isinstance(node, DeleteInstruction):
 
-                if outputs and step not in outputs:
-                    # Some DeleteInstruction steps may not exist in the cache
+                if outputs and node not in outputs:
+                    # Some DeleteInstruction nodes may not exist in the cache
                     # if they come from optional() needs that are not privoded
-                    # as inputs.  Make sure the step exists before deleting.
-                    if step in cache:
+                    # as inputs.  Make sure the node exists before deleting.
+                    if node in cache:
                         if self._debug:
-                            print("removing data '%s' from cache." % step)
-                        cache.pop(step)
+                            print("removing data '%s' from cache." % node)
+                        cache.pop(node)
 
             else:
                 raise TypeError("Unrecognized instruction.")
-
-        if not outputs:
-            # Return cache as output including intermediate data nodes,
-            # but excluding input.
-            return {k: cache[k] for k in set(cache) - set(named_inputs)}
-
-        else:
-            # Filter outputs to just return what's needed.
-            # Note: list comprehensions exist in python 2.7+
-            return {k: cache[k] for k in iter(cache) if k in outputs}
 
     def plot(self, name=None, filename=None, show=False):
         """
@@ -471,3 +539,67 @@ class Network(object):
             plt.show()
 
         return (g, node_to_id)
+
+
+# def ready_to_schedule_operation(op, has_executed, graph, color):
+def ready_to_schedule_operation(op, cache, has_executed):
+    """
+    Determines if a Operation is ready to be scheduled for execution based on
+    what has already been executed.
+
+    Args:
+        op:
+            The Operation object to check
+        has_executed: set
+            A set containing all operations that have been executed so far
+        graph:
+            The networkx graph containing the operations and data nodes
+    Returns:
+        A boolean indicating whether the operation may be scheduled for
+        execution based on what has already been executed.
+    """
+    if op in has_executed:
+        return False
+
+    for need in op.needs:
+        if need.optional:
+            continue
+        if need.name not in cache:
+            return False
+
+    return True
+
+def ready_to_delete_data_node(name, has_executed, graph):
+    """
+    Determines if a DataPlaceholderNode is ready to be deleted from the
+    cache.
+
+    Args:
+        name:
+            The name of the data node to check
+        has_executed: set
+            A set containing all operations that have been executed so far
+        graph:
+            The networkx graph containing the operations and data nodes
+    Returns:
+        A boolean indicating whether the data node can be deleted or not.
+    """
+    data_node = get_data_node(name, graph)
+    return set(graph.successors(data_node)).issubset(has_executed)
+
+
+def get_data_node(name, graph):
+    """
+    Gets a data node from a graph using its name
+    """
+    for node in graph.nodes():
+        if node == name and isinstance(node, DataPlaceholderNode):
+            return node
+    return None
+
+
+def comp(op, cache, color=None):
+    if color:
+        return (op, op._compute(cache, color))
+    else:
+        return (op, op._compute(cache))

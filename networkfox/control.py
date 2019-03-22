@@ -29,18 +29,11 @@ class If(Control):
         return self.graph(named_inputs, color=color)
 
 
-class ElseIf(If):
-
-    def __init__(self, condition_needs, condition, **kwargs):
-        super(ElseIf, self).__init__(condition_needs, condition, **kwargs)
-        self.order = 2
-
-
 class Else(Control):
 
     def __init__(self, **kwargs):
         super(Else, self).__init__(**kwargs)
-        self.order = 3
+        self.order = 2
 
     def __call__(self, *args):
         self.graph = compose(name=self.name)(*args)

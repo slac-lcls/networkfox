@@ -7,9 +7,11 @@ import math
 from pprint import pprint
 from operator import add, sub, mul
 from numpy.testing import assert_raises
+from multiprocess import Pool
 
+import time
 import networkfox.modifiers as modifiers
-from networkfox import operation, compose, If, ElseIf, Else, Var
+from networkfox import operation, compose, If, Else, Var
 
 
 def test_network():
@@ -228,15 +230,12 @@ def test_deleted_optional():
 
 def test_control():
 
-    # create graph with control flow (if, elseif, else)
+    # create graph with control flow (if, else)
     graph = compose(name='graph')(
         operation(name="mul1", needs=['a', 'b'], provides=['ab'])(mul),
         If(name='if_less_than_2', needs=['ab'], provides=['d'], condition_needs=['i'], condition=lambda i: i < 2)(
             operation(name='add', needs=['ab'], provides=['c'])(lambda ab: ab + 2),
             operation(name='sub2', needs=['c'], provides=['d'])(lambda c: c - 2)
-        ),
-        ElseIf(name='elseif', needs=['ab'], provides=['d'], condition_needs=['ab'], condition=lambda ab: ab > 2)(
-            operation(name='add', needs=['ab'], provides=['d'])(lambda ab: ab*10)
         ),
         Else(name='else_less_than_2', needs=['ab'], provides=['d'])(
             operation(name='sub', needs=['ab'], provides=['c'])(lambda ab: ab - 1),
@@ -248,10 +247,6 @@ def test_control():
     # check if branch
     results = graph({'a': 1, 'b': 3, 'i': 1})
     assert results == {'ab': 3, 'c': 5, 'd': 3, 'e': 1.5}
-
-    # check else if branch
-    results = graph({'a': 1, 'b': 3, 'i': 3})
-    assert results == {'ab': 3, 'd': 30, 'e': 15.0}
 
     # check else branch
     results = graph({'a': 1, 'b': 1, 'i': 3})
@@ -278,22 +273,22 @@ def test_control_and_color():
             operation(name='add', needs=['ab'], provides=['c'], color='red')(lambda ab: ab + 2),
             operation(name='sub2', needs=['c'], provides=['d'], color='red')(lambda c: c - 2)
         ),
-        ElseIf(name='elseif', needs=['ab'], provides=['d'], condition_needs=['ab'], condition=lambda ab: ab > 2)(
-            operation(name='mul2', needs=['ab'], provides=['d'], color='blue')(lambda ab: ab*10)
-        ),
         Else(name='else_less_than_2', needs=['ab'], provides=['d'])(
-            operation(name='sub', needs=['ab'], provides=['c'], color='red')(lambda ab: ab - 1),
-            operation(name='add2', needs=['c'], provides=['d'], color='red')(lambda c: c + 1)
+            operation(name='sub', needs=['ab'], provides=['c'], color='blue')(lambda ab: ab - 1),
+            operation(name='add2', needs=['c'], provides=['d'], color='blue')(lambda c: c + 1)
         ),
         operation(name='div', needs=['d'], provides=['e'], color='blue')(lambda d: d/2)
     )
+
+    res = graph({'a': 1, 'b': 3, 'i': 1}, color='red')
+    assert res == {'ab': 3, 'd': 3, 'c': 5}
 
     res = graph({'a': 1, 'b': 3, 'i': 3}, color='red')
     assert res == {'ab': 3}
 
     res.update({'i': 3})
     res2 = graph(res, color='blue')
-    assert res2 == {'d': 30, 'e': 15.0}
+    assert res2 == {'c': 2, 'e': 1.5, 'd': 3}
 
 
 def test_type_checking():
@@ -306,7 +301,8 @@ def test_type_checking():
         graph = compose(name="graph")(
            operation(name="mul1", needs=[Var("a", int), Var("b", int)], provides=[Var("ab", int)])(mul),
            operation(name="sub1", needs=[Var("a", float), Var("ab", float)], provides=[Var("a_minus_ab", float)])(sub),
-           operation(name="abspow1", needs=[Var("a_minus_ab", float)], provides=[Var("abs_a_minus_ab_cubed", float)], params={"p": 3})(abspow)
+           operation(name="abspow1", needs=[Var("a_minus_ab", float)],
+                     provides=[Var("abs_a_minus_ab_cubed", float)], params={"p": 3})(abspow)
         )
     except TypeError as e:
         pass
@@ -314,8 +310,123 @@ def test_type_checking():
     graph = compose(name="graph")(
         operation(name="mul1", needs=[Var("a", int), Var("b", int)], provides=[Var("ab", int)])(mul),
         operation(name="sub1", needs=[Var("a", int), Var("ab", int)], provides=[Var("a_minus_ab", int)])(sub),
-        operation(name="abspow1", needs=[Var("a_minus_ab", int), Var("p", int, optional=True)], provides=[Var("abs_a_minus_ab_cubed", int)])(abspow)
+        operation(name="abspow1", needs=[Var("a_minus_ab", int), Var("p", int, optional=True)],
+                  provides=[Var("abs_a_minus_ab_cubed", int)])(abspow)
     )
 
     out = graph({'a': 2, 'b': 5})
     assert out == {'abs_a_minus_ab_cubed': 512, 'a_minus_ab': -8, 'ab': 10}
+
+
+def test_parallel():
+
+    def fn(x, t0):
+        time.sleep(1)
+        print("fn %s" % (time.time() - t0))
+        return 1 + x
+
+    def fn2(a, b, t0):
+        time.sleep(1)
+        print("fn2 %s" % (time.time() - t0))
+        return a+b
+
+    def fn3(z, t0, k=1):
+        time.sleep(1)
+        print("fn3 %s" % (time.time() - t0))
+        return z + k
+
+    pipeline = compose(name="l", merge=True)(
+
+        # the following should execute in parallel under threaded execution mode
+        operation(name="a", needs=["x", "t0"], provides="ao")(fn),
+        operation(name="b", needs=["x", "t0"], provides="bo")(fn),
+
+        # this should execute after a and b have finished
+        operation(name="c", needs=["ao", "bo", "t0"], provides="co")(fn2),
+
+        operation(name="d",
+                  needs=["ao", "t0", modifiers.optional("k")],
+                  provides="do")(fn3),
+
+        operation(name="e", needs=["ao", "bo", "t0"], provides="eo")(fn2),
+        operation(name="f", needs=["eo", "t0"], provides="fo")(fn),
+        operation(name="g", needs=["fo", "t0"], provides="go")(fn)
+    )
+
+    pool = Pool()
+    t0 = time.time()
+    result_parallel = pipeline({"x": 10, "t0": t0}, ["co", "go", "do"], pool=pool)
+
+    t0 = time.time()
+    result_sequential = pipeline({"x": 10, "t0": t0}, ["co", "go", "do"])
+
+    assert result_sequential == result_parallel
+
+
+def test_parallel_control():
+    graph = compose(name='graph')(
+        operation(name="mul1", needs=['a', 'b'], provides=['ab'])(mul),
+        If(name='if_less_than_2', needs=['ab'], provides=['d'], condition_needs=['i'], condition=lambda i: i < 2)(
+                operation(name='add', needs=['ab'], provides=['c'])(lambda ab: ab + 2),
+                operation(name='sub2', needs=['c'], provides=['d'])(lambda c: c - 2)
+        ),
+        Else(name='else_less_than_2', needs=['ab'], provides=['d'])(
+                operation(name='sub', needs=['ab'], provides=['c'])(lambda ab: ab - 1),
+                operation(name='add2', needs=['c'], provides=['d'])(lambda c: c + 1)
+        ),
+        operation(name='div', needs=['d'], provides=['e'])(lambda d: d/2)
+    )
+
+    # check if branch
+    pool = Pool()
+    results_serial = graph({'a': 1, 'b': 3, 'i': 1})
+    results_parallel = graph({'a': 1, 'b': 3, 'i': 1}, pool=pool)
+    assert results_serial == results_parallel
+
+    # check else branch
+    results_serial = graph({'a': 1, 'b': 1, 'i': 3})
+    results_parallel = graph({'a': 1, 'b': 1, 'i': 3}, pool=pool)
+    assert results_serial == results_parallel
+
+
+def test_parallel_color():
+    graph = compose(name='graph')(
+        operation(name='sum', needs=['a', 'b'], provides=['apb'], color='red')(add),
+        operation(name='mul', needs=['a', 'b'], provides=['ab'], color='blue')(mul)
+    )
+
+    pool = Pool()
+    res_serial = graph({'a': 2, 'b': 3}, color='red')
+    res_parallel = graph({'a': 2, 'b': 3}, color='red', pool=pool)
+    assert res_serial == res_parallel
+
+    res_serial = graph({'a': 2, 'b': 3}, color='blue')
+    res_parallel = graph({'a': 2, 'b': 3}, color='blue', pool=pool)
+    assert res_serial == res_parallel
+
+
+def test_parallel_control_and_color():
+
+    graph = compose(name='graph')(
+        operation(name="mul1", needs=['a', 'b'], provides=['ab'], color='red')(mul),
+        If(name='if_less_than_2', needs=['ab'], provides=['d'], condition_needs=['i'], condition=lambda i: i < 2)(
+                operation(name='add', needs=['ab'], provides=['c'], color='red')(lambda ab: ab + 2),
+                operation(name='sub2', needs=['c'], provides=['d'], color='red')(lambda c: c - 2)
+        ),
+        Else(name='else_less_than_2', needs=['ab'], provides=['d'])(
+                operation(name='sub', needs=['ab'], provides=['c'], color='blue')(lambda ab: ab - 1),
+                operation(name='add2', needs=['c'], provides=['d'], color='blue')(lambda c: c + 1)
+        ),
+        operation(name='div', needs=['d'], provides=['e'], color='blue')(lambda d: d/2)
+    )
+
+    pool = Pool()
+    res = graph({'a': 1, 'b': 3, 'i': 1}, color='red', pool=pool)
+    assert res == {'ab': 3, 'd': 3, 'c': 5}
+
+    res = graph({'a': 1, 'b': 3, 'i': 3}, color='red', pool=pool)
+    assert res == {'ab': 3}
+
+    res.update({'i': 3})
+    res2 = graph(res, color='blue', pool=pool)
+    assert res2 == {'c': 2, 'e': 1.5, 'd': 3}

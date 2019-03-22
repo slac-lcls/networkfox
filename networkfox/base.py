@@ -111,8 +111,8 @@ class NetworkOperation(Operation):
         self.net = kwargs.pop('net')
         Operation.__init__(self, **kwargs)
 
-    def _compute(self, named_inputs, outputs=None, color=None):
-        return self.net.compute(outputs, named_inputs, color)
+    def _compute(self, named_inputs, outputs=None, color=None, pool=None):
+        return self.net.compute(outputs, named_inputs, color, pool)
 
     def __call__(self, *args, **kwargs):
         return self._compute(*args, **kwargs)
