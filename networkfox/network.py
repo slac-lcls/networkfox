@@ -1,4 +1,4 @@
-# Copyright 2018 Stanford University
+# Copyright 2019 Stanford University
 # Copyright 2016, Yahoo Inc.
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 
@@ -401,6 +401,8 @@ class Network(object):
                     layer_outputs = node._compute(cache, color)
                     cache.update(layer_outputs)
 
+                self.times[node.name] = node.graph.net.times
+
             elif isinstance(node, Operation):
 
                 if self._debug:
@@ -413,6 +415,9 @@ class Network(object):
                 # compute layer outputs
                 layer_outputs = node._compute(cache)
 
+                # record execution time
+                t_complete = round(time.time() - t0, 5)
+
                 for output in node.provides:
                     if output.name in layer_outputs and not isinstance(layer_outputs[output.name], output.type):
                         raise TypeError("Type mismatch. Operation: %s Output: %s Expected: %s Got: %s" %
@@ -421,8 +426,6 @@ class Network(object):
                 # add outputs to cache
                 cache.update(layer_outputs)
 
-                # record execution time
-                t_complete = round(time.time() - t0, 5)
                 self.times[node.name] = t_complete
                 if self._debug:
                     print("node completion time: %s" % t_complete)

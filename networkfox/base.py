@@ -1,4 +1,4 @@
-# Copyright 2018 Stanford University
+# Copyright 2019 Stanford University
 # Copyright 2016, Yahoo Inc.
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 
@@ -37,6 +37,7 @@ class Operation(object):
         self.params = kwargs.get('params', {})
         self.color = kwargs.get('color', None)
         self.order = 0
+        self.metadata = kwargs.get('metadata', {})
 
         # call _after_init as final step of initialization
         self._after_init()
@@ -119,6 +120,12 @@ class NetworkOperation(Operation):
 
     def plot(self, filename=None, show=False):
         return self.net.plot(self.name, filename=filename, show=show)
+
+    def times(self):
+        return self.net.times
+
+    def node_metadata(self):
+        return {node.name: node.metadata for node in self.net.graph.nodes() if hasattr(node, "metadata")}
 
 
 class Control(Operation):

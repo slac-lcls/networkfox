@@ -1,4 +1,4 @@
-# Copyright 2018 Stanford University
+# Copyright 2019 Stanford University
 # Copyright 2016, Yahoo Inc.
 # Licensed under the terms of the Apache License, Version 2.0. See the LICENSE file associated with the project for terms.
 
@@ -7,13 +7,6 @@ from itertools import chain
 from .base import Operation, NetworkOperation, Var, Control
 from .network import Network
 from .modifiers import optional
-
-
-# class GraphExecutionException(Exception):
-
-#     def __init__(self, node_name, exception):
-#         self.node_name = node_name
-#         self.exception = exception
 
 
 class FunctionalOperation(Operation):
@@ -33,6 +26,7 @@ class FunctionalOperation(Operation):
             result = self.fn(*inputs, **kwargs)
         except Exception as e:
             e.node_name = self.name
+            e.metadata = self.metadata
             raise e
 
         if len(self.provides) == 1:
