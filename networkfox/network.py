@@ -217,12 +217,12 @@ class Network(object):
             return self._necessary_steps_cache[cache_key]
         graph = self.graph
         if not outputs:
-
             # If caller requested all outputs, the necessary nodes are all
             # nodes that are reachable from one of the inputs.  Ignore input
             # names that aren't in the graph.
             necessary_nodes = set()
-            subgraphs = list(filter(lambda node: isinstance(node, NetworkOperation) or isinstance(node, Control), graph.nodes))
+            subgraphs = list(filter(lambda node: isinstance(node, NetworkOperation) or
+                                    isinstance(node, Control), graph.nodes))
             for input_name in iter(inputs):
                 if graph.has_node(input_name):
                     necessary_nodes |= nx.descendants(graph, input_name)
@@ -231,6 +231,11 @@ class Network(object):
                         necessary_nodes.add(subgraph)
                     elif isinstance(subgraph, Control) and subgraph.graph.net.graph.has_node(input_name):
                         necessary_nodes.add(subgraph)
+
+            dangling_nodes = [n for n, d in self.graph.in_degree() if d == 0]
+            for node in dangling_nodes:
+                necessary_nodes.add(node)
+                necessary_nodes |= nx.descendants(graph, node)
         else:
 
             # If the caller requested a subset of outputs, find any nodes that
@@ -274,7 +279,6 @@ class Network(object):
         return necessary_steps
 
     def compute(self, outputs, named_inputs, color=None, pool=None):
-
         # assert that network has been compiled
         assert self.steps, "network must be compiled before calling compute."
         assert isinstance(outputs, (list, tuple)) or outputs is None,\
@@ -411,7 +415,6 @@ class Network(object):
 
                 # time execution...
                 t0 = time.time()
-
                 # compute layer outputs
                 layer_outputs = node._compute(cache)
 
