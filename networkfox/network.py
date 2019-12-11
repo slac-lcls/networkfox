@@ -232,7 +232,8 @@ class Network(object):
                     elif isinstance(subgraph, Control) and subgraph.graph.net.graph.has_node(input_name):
                         necessary_nodes.add(subgraph)
 
-            dangling_nodes = [n for n, d in self.graph.in_degree() if d == 0]
+            dangling_nodes = [n for n, d in self.graph.in_degree() if d == 0 and isinstance(n, Operation)]
+
             for node in dangling_nodes:
                 necessary_nodes.add(node)
                 necessary_nodes |= nx.descendants(graph, node)
