@@ -30,6 +30,16 @@ class DeleteInstruction(str):
         return 'DeleteInstruction("%s")' % self
 
 
+def sort_key(node):
+
+    if hasattr(node, 'order'):
+        return node.order
+    elif isinstance(node, DataPlaceholderNode):
+        return float('-inf')
+    else:
+        return 0
+
+
 class Network(object):
     """
     This is the main network implementation. The class contains all of the
@@ -128,17 +138,8 @@ class Network(object):
 
         # create an execution order such that each layer's needs are provided.
         try:
-            def key(node):
-
-                if hasattr(node, 'order'):
-                    return node.order
-                elif isinstance(node, DataPlaceholderNode):
-                    return float('-inf')
-                else:
-                    return 0
-
             ordered_nodes = list(nx.dag.lexicographical_topological_sort(self.graph,
-                                                                         key=key))
+                                                                         key=sort_key))
         except TypeError as e:
             if self._debug:
                 print("Lexicographical topological sort failed! Falling back to topological sort.")
@@ -183,9 +184,9 @@ class Network(object):
                         self.steps.append(DeleteInstruction(predecessor))
 
             else:
-                raise TypeError("Unrecognized network graph node")
+                raise TypeError("Unrecognized network graph node", node)
 
-    def _find_necessary_steps(self, outputs, inputs, color=None):
+    def _find_necessary_steps(self, outputs, inputs, color=None, satisfied_outputs=None):
         """
         Determines what graph steps need to be run to get to the requested
         outputs from the provided inputs.  Eliminates steps that come before
@@ -215,34 +216,72 @@ class Network(object):
         cache_key = (*inputs_keys, outputs, color)
         if cache_key in self._necessary_steps_cache:
             return self._necessary_steps_cache[cache_key]
+
         graph = self.graph
+
+        if color:
+            graph = graph.copy()
+            to_del = set()
+            for node, data in graph.nodes.items():
+                if isinstance(node, Control):
+                    continue
+                if isinstance(node, Operation) and data.get('color', None) != color:
+                    to_del.add(node)
+                    to_del.update(graph.successors(node))
+            graph.remove_nodes_from(to_del)
+
+            new_inputs = [n for n, d in graph.in_degree() if d == 0]
+            for node in new_inputs:
+                if isinstance(node, Operation):
+                    for need in node.needs:
+                        new_node = DataPlaceholderNode(need.name)
+                        if new_node not in graph.nodes:
+                            graph.add_edge(new_node, node)
+
         if not outputs:
             # If caller requested all outputs, the necessary nodes are all
             # nodes that are reachable from one of the inputs.  Ignore input
             # names that aren't in the graph.
-            necessary_nodes = set()
-            subgraphs = list(filter(lambda node: isinstance(node, NetworkOperation) or
-                                    isinstance(node, Control), graph.nodes))
-            for input_name in iter(inputs):
-                if graph.has_node(input_name):
-                    necessary_nodes |= nx.descendants(graph, input_name)
-                for subgraph in subgraphs:
-                    if isinstance(subgraph, NetworkOperation) and subgraph.net.graph.has_node(input_name):
-                        necessary_nodes.add(subgraph)
-                    elif isinstance(subgraph, Control) and subgraph.graph.net.graph.has_node(input_name):
-                        necessary_nodes.add(subgraph)
+            necessary_nodes = []
+            if satisfied_outputs is None:
+                satisfied_outputs = set()
 
-            dangling_nodes = [n for n, d in self.graph.in_degree() if d == 0 and isinstance(n, Operation)]
+            satisfied_outputs.update(inputs.keys())
 
-            for node in dangling_nodes:
-                necessary_nodes.add(node)
-                necessary_nodes |= nx.descendants(graph, node)
+            for node in nx.dag.lexicographical_topological_sort(graph, key=sort_key):
+                if isinstance(node, Control):
+                    condition_needs = getattr(node, 'conditions_needs', None)
+                    if condition_needs and condition_needs.issubset(satisfied_outputs):
+                        steps = node.graph.net._find_necessary_steps(outputs, inputs, color, satisfied_outputs)
+                        if steps:
+                            necessary_nodes.append(node)
+                            needs = set(map(lambda need: need.name, node.needs))
+                            satisfied_outputs.update(needs)
+                    else:
+                        # ATTEMPT SHORT CIRCUIT
+                        steps = node.graph.net._find_necessary_steps(outputs, inputs, color, satisfied_outputs)
+                        if steps:
+                            necessary_nodes.append(node)
+                            needs = set(map(lambda need: need.name, node.needs))
+                            satisfied_outputs.update(needs)
+                elif isinstance(node, Operation) or isinstance(node, NetworkOperation):
+                    needs = set()
+                    for need in node.needs:
+                        if need.optional:
+                            continue
+                        needs.add(need.name)
+                    provides = set(map(lambda provide: provide.name, node.provides))
+                    if needs.issubset(satisfied_outputs):
+                        necessary_nodes.append(node)
+                        satisfied_outputs.update(needs)
+                        satisfied_outputs.update(provides)
+
         else:
-
             # If the caller requested a subset of outputs, find any nodes that
             # are made unecessary because we were provided with an input that's
             # deeper into the network graph.  Ignore input names that aren't
             # in the graph.
+
             unnecessary_nodes = set()
             for input_name in iter(inputs):
                 if graph.has_node(input_name):
@@ -448,7 +487,7 @@ class Network(object):
                         cache.pop(node)
 
             else:
-                raise TypeError("Unrecognized instruction.")
+                raise TypeError("Unrecognized instruction.", node)
 
     def plot(self, name=None, filename=None, show=False):
         """
