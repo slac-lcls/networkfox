@@ -12,7 +12,7 @@ install:
   - cd ..
 
 script:
-  - python setup.py nosetests --with-coverage --cover-package=graphkit
+  - python setup.py nosetests --with-coverage --cover-package=networkfox
 
 deploy:
   provider: pypi
