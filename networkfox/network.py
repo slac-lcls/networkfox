@@ -258,6 +258,7 @@ class Network(object):
                             if needs.issubset(satisfied_outputs):
                                 necessary_nodes.append(node)
                                 satisfied_outputs.update(needs)
+                                provides = set(map(lambda need: need.name, node.provides))
                                 satisfied_outputs.update(provides)
                     else:
                         # ATTEMPT SHORT CIRCUIT
