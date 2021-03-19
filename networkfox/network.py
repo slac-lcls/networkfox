@@ -267,6 +267,8 @@ class Network(object):
                             necessary_nodes.append(node)
                             needs = set(map(lambda need: need.name, node.needs))
                             satisfied_outputs.update(needs)
+                            provides = set(map(lambda need: need.name, node.provides))
+                            satisfied_outputs.update(provides)
                 elif isinstance(node, Operation) or isinstance(node, NetworkOperation):
                     needs = set()
                     for need in node.needs:
