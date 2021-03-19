@@ -250,7 +250,7 @@ class Network(object):
 
             for node in nx.dag.lexicographical_topological_sort(graph, key=sort_key):
                 if isinstance(node, Control):
-                    condition_needs = set(getattr(node, 'condition_needs', None))
+                    condition_needs = set(getattr(node, 'condition_needs', []))
                     if condition_needs and condition_needs.issubset(satisfied_outputs):
                         steps = node.graph.net._find_necessary_steps(outputs, inputs, color, satisfied_outputs)
                         if steps:
