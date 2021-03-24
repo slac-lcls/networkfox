@@ -461,6 +461,20 @@ class Network(object):
                 # time execution...
                 t0 = time.time()
                 # compute layer outputs
+                # the execution plan is built assuming all inputs are not None, once we've started executing
+                # we drop nodes that have None input
+                none_input = False
+                for need in node.needs:
+                    if need.optional:
+                        continue
+                    if need.name in cache and cache[need.name] is None:
+                        none_input = True
+                    elif need.name not in cache:
+                        none_input = True
+
+                if none_input:
+                    continue
+
                 layer_outputs = node._compute(cache)
 
                 # record execution time
