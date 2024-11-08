@@ -435,6 +435,7 @@ class Network(object):
         """
 
         self.times = {}
+        self.warnings = {}
 
         for node in necessary_nodes:
 
