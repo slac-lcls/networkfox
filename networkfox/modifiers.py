@@ -42,3 +42,7 @@ class optional(str):
 
     """
     pass
+
+
+class GraphWarning(Exception):
+    pass

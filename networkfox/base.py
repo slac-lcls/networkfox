@@ -124,6 +124,9 @@ class NetworkOperation(Operation):
     def times(self):
         return self.net.times
 
+    def warnings(self):
+        return self.net.warnings
+
     def node_metadata(self):
         return {node.name: node.metadata for node in self.net.graph.nodes() if hasattr(node, "metadata")}
 

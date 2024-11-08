@@ -318,6 +318,28 @@ def test_type_checking():
     assert out == {'abs_a_minus_ab_cubed': 512, 'a_minus_ab': -8, 'ab': 10}
 
 
+def test_warning():
+
+    def f(a):
+        if a > 10:
+            raise modifiers.GraphWarning("out of range")
+        return a
+
+    # Sum operation, late-bind compute function
+    op1 = operation(name='op1', needs=['a'], provides='op1_a')(f)
+    op2 = operation(name='op2', needs=['op1_a'], provides='op2_a')(f)
+
+    # compose network
+    net = compose(name='my network')(op1, op2)
+
+    result = net({'a': 1})
+
+    assert result == {'op1_a': 1, 'op2_a': 1}
+    assert len(net.warnings()) == 0
+
+    result = net({'a': 11})
+    assert len(net.warnings()) == 1
+
 # def test_parallel():
 
 #     def fn(x, t0):

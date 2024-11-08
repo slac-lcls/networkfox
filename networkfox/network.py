@@ -7,6 +7,7 @@ import os
 import uuid
 import networkx as nx
 
+
 from io import StringIO
 
 from .base import Operation, NetworkOperation, Control
@@ -57,7 +58,8 @@ class Network(object):
 
         # this holds the timing information for eache layer
         self.times = {}
-
+        # warnings
+        self.warnings = {}
         # a compiled list of steps to evaluate layers *in order* and free mem.
         self.steps = []
 
@@ -475,10 +477,13 @@ class Network(object):
                 if none_input:
                     continue
 
-                layer_outputs = node._compute(cache)
+                layer_outputs, warning = node._compute(cache)
 
                 # record execution time
                 t_complete = round(time.time() - t0, 5)
+
+                if warning:
+                    self.warnings[node.name] = warning
 
                 for output in node.provides:
                     if output.name in layer_outputs and not isinstance(layer_outputs[output.name], output.type):

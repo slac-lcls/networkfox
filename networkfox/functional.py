@@ -6,7 +6,7 @@ from itertools import chain
 
 from .base import Operation, NetworkOperation, Var, Control
 from .network import Network
-from .modifiers import optional
+from .modifiers import optional, GraphWarning
 
 
 class FunctionalOperation(Operation):
@@ -22,8 +22,14 @@ class FunctionalOperation(Operation):
         optionals = {n.name: named_inputs[n.name] for n in self.needs if n.optional and n.name in named_inputs}
         # Combine params and optionals into one big glob of keyword arguments.
         kwargs = {k: v for d in (self.params, optionals) for k, v in d.items()}
+        warning = None
         try:
             result = self.fn(*inputs, **kwargs)
+        except GraphWarning as e:
+            result = None
+            e.node_name = self.name
+            e.metadata = self.metadata
+            warning = e
         except Exception as e:
             e.node_name = self.name
             e.metadata = self.metadata
@@ -32,12 +38,15 @@ class FunctionalOperation(Operation):
         if len(self.provides) == 1:
             result = [result]
 
-        result = zip(map(lambda arg: arg.name, self.provides), result)
-        if outputs:
-            outputs = set(outputs)
-            result = filter(lambda x: x[0] in outputs, result)
+        if result:
+            result = zip(map(lambda arg: arg.name, self.provides), result)
+            if outputs:
+                outputs = set(outputs)
+                result = filter(lambda x: x[0] in outputs, result)
 
-        return dict(result)
+            return dict(result), warning
+        else:
+            return {}, warning
 
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
