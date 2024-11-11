@@ -38,7 +38,7 @@ class Operation(object):
         self.color = kwargs.get('color', None)
         self.order = 0
         self.metadata = kwargs.get('metadata', {})
-
+        self.warning = None
         # call _after_init as final step of initialization
         self._after_init()
 

@@ -478,13 +478,13 @@ class Network(object):
                 if none_input:
                     continue
 
-                layer_outputs, warning = node._compute(cache)
+                layer_outputs = node._compute(cache)
 
                 # record execution time
                 t_complete = round(time.time() - t0, 5)
 
-                if warning:
-                    self.warnings[node.name] = warning
+                if node.warning:
+                    self.warnings[node.name] = node.warning
 
                 for output in node.provides:
                     if output.name in layer_outputs and not isinstance(layer_outputs[output.name], output.type):

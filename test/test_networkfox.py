@@ -332,13 +332,13 @@ def test_warning():
     # compose network
     net = compose(name='my network')(op1, op2)
 
-    result = net({'a': 1})
+    result = net({'a': 11})
+    assert len(net.warnings()) == 1
 
+    result = net({'a': 1})
     assert result == {'op1_a': 1, 'op2_a': 1}
     assert len(net.warnings()) == 0
 
-    result = net({'a': 11})
-    assert len(net.warnings()) == 1
 
 # def test_parallel():
 

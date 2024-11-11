@@ -15,6 +15,7 @@ class FunctionalOperation(Operation):
         Operation.__init__(self, **kwargs)
 
     def _compute(self, named_inputs, outputs=None):
+        self.warning = None
         inputs = [named_inputs[d.name] for d in self.needs if not d.optional]
 
         # Find any optional inputs in named_inputs.  Get only the ones that
@@ -22,14 +23,14 @@ class FunctionalOperation(Operation):
         optionals = {n.name: named_inputs[n.name] for n in self.needs if n.optional and n.name in named_inputs}
         # Combine params and optionals into one big glob of keyword arguments.
         kwargs = {k: v for d in (self.params, optionals) for k, v in d.items()}
-        warning = None
+
         try:
             result = self.fn(*inputs, **kwargs)
         except GraphWarning as e:
             result = None
             e.node_name = self.name
             e.metadata = self.metadata
-            warning = e
+            self.warning = e
         except Exception as e:
             e.node_name = self.name
             e.metadata = self.metadata
@@ -44,9 +45,9 @@ class FunctionalOperation(Operation):
                 outputs = set(outputs)
                 result = filter(lambda x: x[0] in outputs, result)
 
-            return dict(result), warning
+            return dict(result)
         else:
-            return {}, warning
+            return {}
 
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
