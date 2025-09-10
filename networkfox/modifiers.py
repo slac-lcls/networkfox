@@ -13,7 +13,7 @@ file associated with the project for terms.
 """
 
 
-class optional(str):
+class optional(object):
     """
     Input values in ``needs`` may be designated as optional using this modifier.
     If this modifier is applied to an input value, that value will be input to
@@ -41,7 +41,9 @@ class optional(str):
         assert graph({'a': 5, 'b': 2})['sum'] == 7
 
     """
-    pass
+    def __init__(self, name, mapped_name=None):
+        self.name = name
+        self.mapped_name = mapped_name or name
 
 
 class GraphWarning(Exception):

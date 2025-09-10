@@ -20,7 +20,9 @@ class FunctionalOperation(Operation):
 
         # Find any optional inputs in named_inputs.  Get only the ones that
         # are present there, no extra `None`s.
-        optionals = {n.name: named_inputs[n.name] for n in self.needs if n.optional and n.name in named_inputs}
+
+        optionals = {n.optional.mapped_name: named_inputs[n.name] for n in self.needs if n.optional and n.name in named_inputs}
+
         # Combine params and optionals into one big glob of keyword arguments.
         kwargs = {k: v for d in (self.params, optionals) for k, v in d.items()}
 
@@ -98,10 +100,12 @@ class operation(Operation):
             needs = []
 
             for arg in kwargs['needs']:
-                var = Var(arg)
 
                 if isinstance(arg, optional):
-                    var.optional = True
+                    var = Var(arg.name)
+                    var.optional = arg
+                else:
+                    var = Var(arg)
 
                 needs.append(var)
 
